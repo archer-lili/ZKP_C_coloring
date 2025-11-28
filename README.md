@@ -1,1 +1,1 @@
-# ZKP_3_coloring
+# ZKP_C_coloring
