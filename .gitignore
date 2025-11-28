@@ -1,0 +1,34 @@
+/target
+# Debug and release builds
+debug/
+release/
+
+# Backup files (macOS/Linux editors)
+*~
+*.swp
+*.swo
+
+# VS Code files
+.vscode/
+
+# Rust analyzer cache (optional but recommended)
+.rustc_info.json
+
+# Cargo output (optional)
+.cargo-ok
+
+# Logs
+*.log
+
+# IDE metadata
+.idea/
+*.iml
+
+# Executables
+*.exe
+*.dll
+*.so
+*.dylib
+
+# macOS
+.DS_Store
