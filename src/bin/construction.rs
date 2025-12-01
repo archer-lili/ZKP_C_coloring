@@ -1,5 +1,5 @@
 use rand::prelude::*;
-use rand::thread_rng;
+use rand::rng;
 use std::collections::HashSet;
 
 // --------------------------------------------
@@ -28,13 +28,13 @@ pub struct DiGraph {
 // Generate random directed graph
 // -------------------------------------------------------------
 pub fn random_digraph(n: usize, p: f64) -> DiGraph {
-    let mut rng = thread_rng();
+    let mut rng = rng();
     let mut adj = vec![vec![false; n]; n];
 
     for i in 0..n {
         for j in 0..n {
             if i != j {
-                adj[i][j] = rng.gen::<f64>() < p;
+                adj[i][j] = rng.random::<f64>() < p;
             }
         }
     }
@@ -56,13 +56,13 @@ pub fn random_digraph(n: usize, p: f64) -> DiGraph {
 // Color edges with exactly l blank edges (others colored)
 // -------------------------------------------------------------
 pub fn random_edge_coloring_with_blanks(
-    G: &DiGraph,
+    graph: &DiGraph,
     k: usize,
     l: usize
 ) -> EdgeColoring
 {
-    let mut rng = thread_rng();
-    let n = G.n;
+    let mut rng = rng();
+    let n = graph.n;
 
     // palette of colors
     let palette = ['r','g','y'];
@@ -75,7 +75,7 @@ pub fn random_edge_coloring_with_blanks(
     let mut edges = Vec::new();
     for i in 0..n {
         for j in 0..n {
-            if G.adj[i][j] {
+            if graph.adj[i][j] {
                 edges.push((i, j));
             }
         }
@@ -83,7 +83,7 @@ pub fn random_edge_coloring_with_blanks(
 
     // first: color every real edge with some color
     for &(i, j) in &edges {
-        colors[i][j] = palette[rng.gen_range(0..k)];
+        colors[i][j] = palette[rng.random_range(0..k)];
     }
 
     // now make exactly l of them blank
@@ -107,7 +107,7 @@ pub struct Triad {
 }
 
 // Extract triad (a,b,c)
-pub fn extract_triad(G: &DiGraph, c: &EdgeColoring, a: usize, b: usize, d: usize) -> Triad {
+pub fn extract_triad(graph: &DiGraph, coloring: &EdgeColoring, a: usize, b: usize, d: usize) -> Triad {
     let verts = [a, b, d];
     let mut edges = [false; 9];
     let mut colors = [ABSENT; 9];
@@ -115,8 +115,8 @@ pub fn extract_triad(G: &DiGraph, c: &EdgeColoring, a: usize, b: usize, d: usize
     for (i, &vi) in verts.iter().enumerate() {
         for (j, &vj) in verts.iter().enumerate() {
             let idx = i * 3 + j;
-            edges[idx] = G.adj[vi][vj];
-            colors[idx] = c[vi][vj];
+            edges[idx] = graph.adj[vi][vj];
+            colors[idx] = coloring[vi][vj];
         }
     }
 
@@ -162,17 +162,17 @@ pub fn canonical_triad(t: &Triad) -> ([bool; 9], [char; 9]) {
 // -------------------------------------------------------------
 // Build C'
 // -------------------------------------------------------------
-pub fn build_C_prime(
-    G: &DiGraph,
+pub fn build_c_prime(
+    graph: &DiGraph,
     colors: &EdgeColoring,
 ) -> HashSet<([bool; 9], [char; 9])>
 {
     let mut set = HashSet::new();
 
-    for a in 0..G.n {
-        for b in (a + 1)..G.n {
-            for c in (b + 1)..G.n {
-                let triad = extract_triad(G, colors, a, b, c);
+    for a in 0..graph.n {
+        for b in (a + 1)..graph.n {
+            for c in (b + 1)..graph.n {
+                let triad = extract_triad(graph, colors, a, b, c);
                 set.insert(canonical_triad(&triad));
             }
         }
@@ -184,9 +184,9 @@ pub fn build_C_prime(
 // -------------------------------------------------------------
 // Pretty print triads
 // -------------------------------------------------------------
-pub fn print_c_prime(C_prime: &HashSet<([bool; 9], [char; 9])>) {
+pub fn print_c_prime(c_prime: &HashSet<([bool; 9], [char; 9])>) {
     let mut idx = 0;
-    for (edges, colors) in C_prime.iter() {
+    for (edges, colors) in c_prime.iter() {
         println!("=== Triad {} ===", idx);
         idx += 1;
 
@@ -223,23 +223,23 @@ pub fn construct_for_zk(
     usize,
     EdgeColoring
 ) {
-    let G = random_digraph(n, p);
+    let graph = random_digraph(n, p);
 
     // count real edges
     let real_edges: Vec<(usize, usize)> = (0..n)
         .flat_map(|i| (0..n).map(move |j| (i,j)))
-        .filter(|&(i,j)| G.adj[i][j])
+        .filter(|&(i,j)| graph.adj[i][j])
         .collect();
 
     let num_real = real_edges.len();
 
-    let mut rng = thread_rng();
-    let l = rng.gen_range(0..=num_real);  // correct global blanks
+    let mut rng = rng();
+    let l = rng.random_range(0..=num_real);  // correct global blanks
 
-    let edge_colors = random_edge_coloring_with_blanks(&G, k, l);
-    let C_prime = build_C_prime(&G, &edge_colors);
+    let edge_colors = random_edge_coloring_with_blanks(&graph, k, l);
+    let c_prime = build_c_prime(&graph, &edge_colors);
 
-    (C_prime, G, l, edge_colors)
+    (c_prime, graph, l, edge_colors)
 }
 
 // -------------------------------------------------------------
@@ -250,19 +250,19 @@ fn main() {
     let k = 3;
     let p = 0.4;
 
-    let (C_prime, G, l, edge_colors) =
+    let (c_prime, graph, l, edge_colors) =
         construct_for_zk(n, k, p);
 
     println!("ℓ blanks = {}", l);
-    println!("Graph adjacency list: {:?}", G.adj_list);
+    println!("Graph adjacency list: {:?}", graph.adj_list);
 
     println!("Edge colors:");
     for row in &edge_colors {
         println!("{:?}", row);
     }
 
-    println!("C′ size = {}", C_prime.len());
+    println!("C′ size = {}", c_prime.len());
 
     println!("\n--- TRIADS ---\n");
-    print_c_prime(&C_prime);
+    print_c_prime(&c_prime);
 }
