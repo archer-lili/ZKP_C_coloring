@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <title>ZKP-C Coloring – Web Visualizer</title>
+    <style>
+        :root {
+            color-scheme: dark;
+            font-family: "Inter", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #050714;
+            color: #e2e8f0;
+        }
+        body {
+            margin: 0;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            min-height: 100vh;
+            background: radial-gradient(circle at top, #0b1120, #04050d 60%);
+        }
+        h1 {
+            margin: 0;
+            font-size: 1.4rem;
+        }
+        main {
+            display: grid;
+            grid-template-columns: minmax(320px, 640px) minmax(320px, 1fr);
+            gap: 24px;
+        }
+        canvas {
+            width: 100%;
+            height: auto;
+            background: #020617;
+            border-radius: 18px;
+            border: 1px solid rgba(148, 163, 184, 0.25);
+            box-shadow: 0 35px 80px rgba(2, 6, 23, 0.6);
+        }
+        .card {
+            background: rgba(15, 23, 42, 0.85);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 25px 60px rgba(2, 6, 23, 0.45);
+            backdrop-filter: blur(12px);
+        }
+        .card h2 {
+            margin-top: 0;
+            font-size: 0.95rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: #94a3b8;
+        }
+        .grid-two {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 18px;
+        }
+        ul {
+            padding-left: 18px;
+            margin: 0;
+        }
+        li {
+            margin-bottom: 6px;
+        }
+        .logs {
+            font-family: "JetBrains Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+            font-size: 0.9rem;
+            max-height: 260px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            border-radius: 12px;
+            padding: 12px;
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(148, 163, 184, 0.15);
+        }
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 12px;
+            border-radius: 999px;
+            background: rgba(59, 130, 246, 0.15);
+            color: #93c5fd;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+        .row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: center;
+        }
+        .muted {
+            color: #94a3b8;
+        }
+        .triad {
+            display: inline-flex;
+            padding: 2px 8px;
+            border-radius: 8px;
+            background: rgba(148, 163, 184, 0.15);
+            margin: 2px;
+            font-family: "JetBrains Mono", monospace;
+            font-size: 0.85rem;
+        }
+        .edge-chip {
+            display: inline-flex;
+            align-items: center;
+            padding: 2px 8px;
+            margin: 2px;
+            border-radius: 999px;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+        }
+        .edge-chip[data-color="Red"] { background: rgba(248,113,113,0.18); color: #fecaca; }
+        .edge-chip[data-color="Green"] { background: rgba(74,222,128,0.18); color: #bbf7d0; }
+        .edge-chip[data-color="Yellow"] { background: rgba(253,224,71,0.18); color: #fef08a; }
+        .edge-chip[data-color="Blank"] { background: rgba(148,163,184,0.18); color: #e2e8f0; }
+        .merkle-columns {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+        }
+        .merkle-steps {
+            list-style: none;
+            padding-left: 0;
+            margin: 0;
+        }
+        .merkle-step {
+            padding: 6px 10px;
+            border-left: 3px solid rgba(148, 163, 184, 0.3);
+            margin-bottom: 6px;
+            transition: border-color 0.3s, color 0.3s;
+        }
+        .merkle-step.active {
+            border-color: #fcd34d;
+            color: #fcd34d;
+        }
+        code {
+            font-family: "JetBrains Mono", monospace;
+            font-size: 0.78rem;
+        }
+        .fade-in {
+            animation: fadeIn 0.6s ease;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @media (max-width: 960px) {
+            main {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="row">
+        <h1>Zero-Knowledge Graph Coloring – Live Web Visualization</h1>
+        <span class="badge" id="round-status">Round pending</span>
+    </header>
+    <main>
+        <section class="card">
+            <canvas id="graph-canvas" width="640" height="640"></canvas>
+            <p class="muted" id="canvas-caption">Graph layout initializing…</p>
+        </section>
+        <section class="card">
+            <div class="grid-two">
+                <div>
+                    <h2>Graph</h2>
+                    <div id="graph-details" class="muted">Waiting for snapshot…</div>
+                </div>
+                <div>
+                    <h2>Commitments</h2>
+                    <div id="commitment-details" class="muted">Pending…</div>
+                </div>
+                <div>
+                    <h2>Constraints & |C|</h2>
+                    <div id="constraint-details" class="muted">Loading…</div>
+                </div>
+                <div>
+                    <h2>Spot / Blank detail</h2>
+                    <div id="focus-detail" class="muted">Waiting for challenges…</div>
+                </div>
+                <div>
+                    <h2>Merkle traversal</h2>
+                    <div id="merkle-detail" class="muted">Proof navigation pending…</div>
+                </div>
+                <div>
+                    <h2>Logs</h2>
+                    <div id="log-feed" class="logs muted">Waiting for prover/verifier activity…</div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        const canvas = document.getElementById('graph-canvas');
+        const ctx = canvas.getContext('2d');
+        const caption = document.getElementById('canvas-caption');
+        const graphDetails = document.getElementById('graph-details');
+        const constraintDetails = document.getElementById('constraint-details');
+        const commitmentDetails = document.getElementById('commitment-details');
+        const focusDetail = document.getElementById('focus-detail');
+        const merkleDetail = document.getElementById('merkle-detail');
+        const logFeed = document.getElementById('log-feed');
+        const roundStatus = document.getElementById('round-status');
+
+        const palette = {
+            Red: '#ef4444',
+            Green: '#22c55e',
+            Yellow: '#eab308',
+            Blank: '#6b7280',
+        };
+
+        const state = {
+            latestSnapshot: null,
+            merkleIntervals: [],
+        };
+
+        function project(x, y) {
+            const bounds = 2.4; // [-1.2, 1.2]
+            const px = ((x + 1.2) / bounds) * canvas.width;
+            const py = ((1.2 - y) / bounds) * canvas.height;
+            return [px, py];
+        }
+
+        function drawGraph(time = performance.now()) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const snapshot = state.latestSnapshot;
+            if (!snapshot || !snapshot.graph.layout || snapshot.graph.layout.nodes.length === 0) {
+                caption.textContent = 'Graph layout unavailable (no nodes visualized).';
+                return;
+            }
+            const layout = snapshot.graph.layout;
+            caption.textContent = `Showing ${layout.visualized} nodes`;
+            const focus = snapshot.focus || null;
+            const focusEdges = new Set((focus?.edges || []).map(edge => `${edge.from}-${edge.to}`));
+            const focusNodes = new Set();
+            (focus?.triads || []).forEach(triad => triad.forEach(idx => focusNodes.add(idx)));
+            const pulse = focusEdges.size ? 1 + 0.35 * Math.sin(time / 250) : 1;
+
+            layout.edges.forEach(edge => {
+                const [x1, y1] = project(edge.x1, edge.y1);
+                const [x2, y2] = project(edge.x2, edge.y2);
+                const key = `${edge.from}-${edge.to}`;
+                const isFocus = focusEdges.has(key);
+                ctx.lineWidth = isFocus ? 1.6 * pulse + 1 : 1.2;
+                ctx.strokeStyle = palette[edge.color] || '#f8fafc';
+                ctx.beginPath();
+                ctx.moveTo(x1, y1);
+                ctx.lineTo(x2, y2);
+                ctx.stroke();
+                if (isFocus) {
+                    ctx.lineWidth = 0.8;
+                    ctx.strokeStyle = 'rgba(248, 250, 252, 0.65)';
+                    ctx.beginPath();
+                    ctx.moveTo(x1, y1);
+                    ctx.lineTo(x2, y2);
+                    ctx.stroke();
+                }
+            });
+
+            layout.nodes.forEach(node => {
+                const [x, y] = project(node.x, node.y);
+                const isFocus = focusNodes.has(node.idx);
+                const radius = isFocus ? 9 + 1.5 * Math.sin(time / 180) : 8;
+                ctx.fillStyle = '#020617';
+                ctx.strokeStyle = isFocus ? '#67e8f9' : '#e2e8f0';
+                ctx.lineWidth = isFocus ? 2.4 : 1.5;
+                ctx.beginPath();
+                ctx.arc(x, y, radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+
+                ctx.fillStyle = '#f8fafc';
+                ctx.font = '600 12px "Inter", sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(node.idx, x, y);
+            });
+        }
+
+        function shortHash(value, label) {
+            if (!value) return `${label}: pending`;
+            if (value.length <= 12) return `${label}: ${value}`;
+            return `${label}: ${value.slice(0, 6)}…${value.slice(-4)}`;
+        }
+
+        function renderGraph(snapshot) {
+            const g = snapshot.graph;
+            graphDetails.innerHTML = `
+                <div>nodes: <strong>${g.nodes}</strong></div>
+                <div>blank edges: ${g.blank_edges} / limit ${g.blank_limit}</div>
+                <div>|C| (allowed triads): <strong>${g.color_set_size.toLocaleString()}</strong></div>
+                <div>colored samples:</div>
+                <ul>${g.sample_edges.map(edge => `<li>${edge}</li>`).join('')}</ul>
+            `;
+        }
+
+        function renderConstraints(snapshot) {
+            const c = snapshot.constraints;
+            constraintDetails.innerHTML = `
+                <div>rounds: ${c.rounds}</div>
+                <div>spots / round: ${c.spots_per_round}</div>
+                <div>blank checks / round: ${c.blank_checks_per_round}</div>
+                <div>spot probability: ${c.spot_probability.toFixed(2)}</div>
+                <div>STARK security: ${c.stark_security} bits</div>
+                <div>STARK queries: ${c.stark_queries}</div>
+                <div>chunk: ${c.stark_chunk} bytes</div>
+                <div class="muted">Constraint set C enforces all ${snapshot.graph.color_set_size.toLocaleString()} triads</div>
+            `;
+        }
+
+        function renderCommitments(snapshot) {
+            if (snapshot.commitments) {
+                const k = snapshot.commitments;
+                commitmentDetails.innerHTML = `
+                    <div>${shortHash(k.graph_root, 'graph')}</div>
+                    <div>${shortHash(k.perm_root, 'perm')}</div>
+                    <div>${shortHash(k.blank_root, 'blank')}</div>
+                `;
+            } else {
+                commitmentDetails.textContent = 'Commitments pending…';
+            }
+        }
+
+        function renderRound(snapshot) {
+            const round = snapshot.round;
+            if (round.round !== null && round.round !== undefined) {
+                const humanRound = Number(round.round) + 1;
+                roundStatus.textContent = `Round ${humanRound}: ${round.phase}`;
+            } else {
+                roundStatus.textContent = 'Round pending';
+            }
+            if (round.status) {
+                roundStatus.textContent += ` – ${round.status}`;
+            }
+            if (round.detail) {
+                roundStatus.textContent += ` (${round.detail})`;
+            }
+        }
+
+        function renderFocus(snapshot) {
+            const focus = snapshot.focus;
+            if (!focus) {
+                focusDetail.textContent = 'Waiting for spot / blank selection…';
+                return;
+            }
+            const triads = focus.triads
+                .map(triad => `<span class="triad">[${triad.join(', ')}]</span>`)
+                .join('');
+            const edges = focus.edges
+                .map(edge => `<span class="edge-chip" data-color="${edge.color}">${edge.from}→${edge.to}</span>`)
+                .join('');
+            focusDetail.innerHTML = `
+                <div class="badge">${focus.title}</div>
+                <p class="muted">${focus.description}</p>
+                ${triads ? `<div>${triads}</div>` : ''}
+                ${edges ? `<div>${edges}</div>` : ''}
+            `;
+        }
+
+        function shortHashPretty(value) {
+            if (!value) return '';
+            return `${value.slice(0, 6)}…${value.slice(-4)}`;
+        }
+
+        function clearMerkleAnimations() {
+            state.merkleIntervals.forEach(clearInterval);
+            state.merkleIntervals = [];
+        }
+
+        function animateMerkleList(list) {
+            const steps = Array.from(list.querySelectorAll('.merkle-step'));
+            if (steps.length === 0) return;
+            let index = 0;
+            steps[index].classList.add('active');
+            const handle = setInterval(() => {
+                steps.forEach((el, idx) => el.classList.toggle('active', idx === index));
+                index = (index + 1) % steps.length;
+            }, 650);
+            state.merkleIntervals.push(handle);
+        }
+
+        function renderMerkle(snapshot) {
+            clearMerkleAnimations();
+            const merkle = snapshot.merkle;
+            if (!merkle) {
+                merkleDetail.textContent = 'Proof navigation pending…';
+                return;
+            }
+            const buildList = (steps) => steps
+                .map(step => `<li class="merkle-step"><div><small>${step.direction}</small></div><code>${shortHashPretty(step.hash)}</code></li>`)
+                .join('');
+            merkleDetail.innerHTML = `
+                <p>${merkle.label}</p>
+                <div class="merkle-columns">
+                    <div>
+                        <strong>Leaf proof</strong>
+                        <ul class="merkle-steps">${buildList(merkle.leaf_path)}</ul>
+                    </div>
+                    <div>
+                        <strong>Chunk proof</strong>
+                        <ul class="merkle-steps">${buildList(merkle.chunk_path)}</ul>
+                    </div>
+                </div>
+            `;
+            merkleDetail.querySelectorAll('.merkle-steps').forEach(animateMerkleList);
+        }
+
+        function renderLogs(snapshot) {
+            const logs = snapshot.logs
+                .slice()
+                .reverse()
+                .map(entry => `• ${entry}`)
+                .join('\n');
+            logFeed.textContent = logs || 'No activity yet – prover/verifier will stream logs here.';
+            logFeed.classList.remove('fade-in');
+            void logFeed.offsetWidth;
+            logFeed.classList.add('fade-in');
+        }
+
+        function renderSnapshot(snapshot) {
+            state.latestSnapshot = snapshot;
+            renderGraph(snapshot);
+            renderConstraints(snapshot);
+            renderCommitments(snapshot);
+            renderRound(snapshot);
+            renderFocus(snapshot);
+            renderMerkle(snapshot);
+            renderLogs(snapshot);
+        }
+
+        async function refresh() {
+            try {
+                const response = await fetch('/snapshot');
+                if (!response.ok) throw new Error('Bad snapshot response');
+                const snapshot = await response.json();
+                renderSnapshot(snapshot);
+            } catch (err) {
+                caption.textContent = 'Waiting for visualizer data…';
+                console.warn(err);
+            }
+        }
+
+        function animationLoop(time) {
+            drawGraph(time);
+            requestAnimationFrame(animationLoop);
+        }
+
+        refresh();
+        setInterval(refresh, 500);
+        requestAnimationFrame(animationLoop);
+    </script>
+</body>
+</html>

@@ -11,8 +11,7 @@ use std::collections::HashSet;
 pub type EdgeColoring = Vec<Vec<char>>;
 
 pub const ABSENT: char = 'a';
-pub const BLANK:  char = 'b';
-
+pub const BLANK: char = 'b';
 
 // -------------------------------------------------------------
 // Directed graph structure
@@ -55,17 +54,12 @@ pub fn random_digraph(n: usize, p: f64) -> DiGraph {
 // -------------------------------------------------------------
 // Color edges with exactly l blank edges (others colored)
 // -------------------------------------------------------------
-pub fn random_edge_coloring_with_blanks(
-    graph: &DiGraph,
-    k: usize,
-    l: usize
-) -> EdgeColoring
-{
+pub fn random_edge_coloring_with_blanks(graph: &DiGraph, k: usize, l: usize) -> EdgeColoring {
     let mut rng = rng();
     let n = graph.n;
 
     // palette of colors
-    let palette = ['r','g','y'];
+    let palette = ['r', 'g', 'y'];
     assert!(k <= palette.len());
 
     // initialize all as ABSENT
@@ -107,7 +101,13 @@ pub struct Triad {
 }
 
 // Extract triad (a,b,c)
-pub fn extract_triad(graph: &DiGraph, coloring: &EdgeColoring, a: usize, b: usize, d: usize) -> Triad {
+pub fn extract_triad(
+    graph: &DiGraph,
+    coloring: &EdgeColoring,
+    a: usize,
+    b: usize,
+    d: usize,
+) -> Triad {
     let verts = [a, b, d];
     let mut edges = [false; 9];
     let mut colors = [ABSENT; 9];
@@ -162,11 +162,7 @@ pub fn canonical_triad(t: &Triad) -> ([bool; 9], [char; 9]) {
 // -------------------------------------------------------------
 // Build C'
 // -------------------------------------------------------------
-pub fn build_c_prime(
-    graph: &DiGraph,
-    colors: &EdgeColoring,
-) -> HashSet<([bool; 9], [char; 9])>
-{
+pub fn build_c_prime(graph: &DiGraph, colors: &EdgeColoring) -> HashSet<([bool; 9], [char; 9])> {
     let mut set = HashSet::new();
 
     for a in 0..graph.n {
@@ -195,9 +191,11 @@ pub fn print_c_prime(c_prime: &HashSet<([bool; 9], [char; 9])>) {
             let mut first = true;
 
             for j in 0..3 {
-                if edges[i*3 + j] {
-                    if !first { print!(", "); }
-                    let col = colors[i*3 + j];
+                if edges[i * 3 + j] {
+                    if !first {
+                        print!(", ");
+                    }
+                    let col = colors[i * 3 + j];
                     print!("({} {})", j, col);
                     first = false;
                 }
@@ -221,20 +219,20 @@ pub fn construct_for_zk(
     HashSet<([bool; 9], [char; 9])>,
     DiGraph,
     usize,
-    EdgeColoring
+    EdgeColoring,
 ) {
     let graph = random_digraph(n, p);
 
     // count real edges
     let real_edges: Vec<(usize, usize)> = (0..n)
-        .flat_map(|i| (0..n).map(move |j| (i,j)))
-        .filter(|&(i,j)| graph.adj[i][j])
+        .flat_map(|i| (0..n).map(move |j| (i, j)))
+        .filter(|&(i, j)| graph.adj[i][j])
         .collect();
 
     let num_real = real_edges.len();
 
     let mut rng = rng();
-    let l = rng.random_range(0..=num_real);  // correct global blanks
+    let l = rng.random_range(0..=num_real); // correct global blanks
 
     let edge_colors = random_edge_coloring_with_blanks(&graph, k, l);
     let c_prime = build_c_prime(&graph, &edge_colors);
@@ -250,8 +248,7 @@ fn main() {
     let k = 3;
     let p = 0.4;
 
-    let (c_prime, graph, l, edge_colors) =
-        construct_for_zk(n, k, p);
+    let (c_prime, graph, l, edge_colors) = construct_for_zk(n, k, p);
 
     println!("ℓ blanks = {}", l);
     println!("Graph adjacency list: {:?}", graph.adj_list);

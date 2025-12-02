@@ -68,7 +68,11 @@ impl Graph {
         for i in 0..self.n {
             for j in 0..self.n {
                 let color = self.adjacency[i as usize][j as usize];
-                self.edges.push(Edge { from: i, to: j, color });
+                self.edges.push(Edge {
+                    from: i,
+                    to: j,
+                    color,
+                });
             }
         }
     }

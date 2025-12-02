@@ -3,9 +3,9 @@ use crate::crypto::merkle::{ChunkedMerkleProof, ChunkedMerkleTree};
 use crate::crypto::polynomial::BlankPolynomial;
 use crate::stark::constraints::BlankCountConstraints;
 use crate::stark::fri::{derive_fri_layers, sample_fri_queries, FriProof};
-use std::env;
 use crate::stark::StarkField;
 use serde::{Deserialize, Serialize};
+use std::env;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StarkParameters {
@@ -45,7 +45,8 @@ impl BlankCountProof {
             return false;
         }
 
-        let expected_layers = derive_fri_layers(self.trace_length as usize, &self.trace_root, hasher);
+        let expected_layers =
+            derive_fri_layers(self.trace_length as usize, &self.trace_root, hasher);
         if expected_layers != self.fri_proof.layer_roots {
             debug_stark("stark verify failed: layer roots mismatch");
             return false;
@@ -224,11 +225,7 @@ fn build_row_opening(
     }
 }
 
-fn build_query(
-    index: usize,
-    trace_rows: &[TraceRow],
-    tree: &ChunkedMerkleTree,
-) -> BlankQuery {
+fn build_query(index: usize, trace_rows: &[TraceRow], tree: &ChunkedMerkleTree) -> BlankQuery {
     let current = build_row_opening(index, trace_rows, tree);
     let previous = if index > 0 {
         Some(build_row_opening(index - 1, trace_rows, tree))

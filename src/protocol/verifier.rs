@@ -2,13 +2,8 @@ use crate::crypto::hash::{default_quantum_hash, Blake3QuantumHash, QuantumHash};
 use crate::crypto::merkle::ChunkedMerkleProof;
 use crate::graph::{Color, ColorationSet, Spot};
 use crate::protocol::messages::{
-    BlankChallenge,
-    BlankChallengeResponse,
-    BlankEdgeOpening,
-    Challenge,
-    Commitments,
-    SpotChallenge,
-    SpotChallengeResponse,
+    BlankChallenge, BlankChallengeResponse, BlankEdgeOpening, Challenge, Commitments,
+    SpotChallenge, SpotChallengeResponse,
 };
 use crate::stark::constraints::BlankCountConstraints;
 use crate::stark::StarkField;
@@ -125,13 +120,13 @@ impl Verifier {
             None => return false,
         };
         if challenge.spots.len() != response.responses.len() {
-                Self::debug_log("spot response rejected: response count mismatch");
+            Self::debug_log("spot response rejected: response count mismatch");
             return false;
         }
 
         for (spot_nodes, resp) in challenge.spots.iter().zip(&response.responses) {
             if spot_nodes != &resp.nodes {
-                    Self::debug_log("spot response rejected: node ordering mismatch");
+                Self::debug_log("spot response rejected: node ordering mismatch");
                 return false;
             }
 
@@ -144,7 +139,7 @@ impl Verifier {
                     &edge.proof,
                     &commitments.graph_root,
                 ) {
-                        Self::debug_log(&format!(
+                    Self::debug_log(&format!(
                         "spot response rejected: merkle proof mismatch for edge ({}, {})",
                         edge.from, edge.to
                     ));
@@ -167,7 +162,7 @@ impl Verifier {
                         details.push(format!("({},{})={:?}", a, b, color));
                     }
                 }
-                    Self::debug_log(&format!(
+                Self::debug_log(&format!(
                     "spot response rejected: pattern not in coloration set for nodes {:?} -> {}",
                     spot.nodes,
                     details.join(", ")
@@ -194,8 +189,11 @@ impl Verifier {
             None => return false,
         };
 
-        let openings_by_index: HashMap<u64, &BlankEdgeOpening> =
-            response.edges.iter().map(|edge| (edge.edge_index, edge)).collect();
+        let openings_by_index: HashMap<u64, &BlankEdgeOpening> = response
+            .edges
+            .iter()
+            .map(|edge| (edge.edge_index, edge))
+            .collect();
 
         for edge_idx in &challenge.edge_indices {
             let opening = match openings_by_index.get(edge_idx) {
@@ -245,8 +243,10 @@ impl Verifier {
             }
         }
 
-        let constraints =
-            BlankCountConstraints::<StarkField>::new(self.coloration_set.graph_size(), commitments.blank_count as u64);
+        let constraints = BlankCountConstraints::<StarkField>::new(
+            self.coloration_set.graph_size(),
+            commitments.blank_count as u64,
+        );
         if !response.stark_proof.verify(&constraints, &self.hasher) {
             Self::debug_log("blank response rejected: STARK proof invalid");
             return false;
@@ -267,29 +267,18 @@ impl Verifier {
         if proof.leaf_proof.leaf_hash != expected {
             Self::debug_log(&format!(
                 "leaf hash mismatch for edge ({}, {}): expected {:?}, proof {:?}, bytes {:?}",
-                from,
-                to,
-                expected,
-                proof.leaf_proof.leaf_hash,
-                leaf_bytes
+                from, to, expected, proof.leaf_proof.leaf_hash, leaf_bytes
             ));
             return false;
         }
         if !proof.verify(graph_root, &self.hasher) {
-            Self::debug_log(&format!(
-                "merkle path mismatch for edge ({}, {})",
-                from, to
-            ));
+            Self::debug_log(&format!("merkle path mismatch for edge ({}, {})", from, to));
             return false;
         }
         true
     }
 
-    fn verify_blank_opening(
-        &self,
-        opening: &BlankEdgeOpening,
-        blank_root: &[u8; 32],
-    ) -> bool {
+    fn verify_blank_opening(&self, opening: &BlankEdgeOpening, blank_root: &[u8; 32]) -> bool {
         let bit = if opening.is_blank { 1u8 } else { 0u8 };
         let leaf_bytes = vec![bit];
         if opening.blank_proof.leaf_proof.leaf_hash != self.hasher.hash(&leaf_bytes) {

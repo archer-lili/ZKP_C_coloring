@@ -6,14 +6,12 @@ use zkp_c_coloring::protocol::prover::{ProverConfig, ProverState};
 use zkp_c_coloring::protocol::verifier::{Verifier, VerifierConfig};
 use zkp_c_coloring::utils::random_graph::generate_hard_instance;
 use zkp_c_coloring::utils::serialization::{
-    load_graph_instance,
-    load_proof,
-    save_graph_instance,
-    save_proof,
-    GraphInstance,
-    ProofTranscript,
-    TranscriptResponse,
-    TranscriptRound,
+    load_graph_instance, load_proof, save_graph_instance, save_proof, GraphInstance,
+    ProofTranscript, TranscriptResponse, TranscriptRound,
+};
+use zkp_c_coloring::{
+    focus_from_blank_response, focus_from_spot_response, merkle_display_from_chunked,
+    RoundSnapshot, Visualizer, WebVisualizer,
 };
 
 type CliResult<T> = Result<T, Box<dyn std::error::Error>>;
@@ -59,6 +57,22 @@ enum Commands {
         #[arg(long, default_value_t = 3)]
         samples: u32,
     },
+    /// Run the protocol with a live terminal UI that visualizes each round
+    Visualize {
+        #[arg(short, long, value_name = "FILE")]
+        instance: PathBuf,
+        #[arg(long, default_value_t = 8)]
+        rounds: u32,
+    },
+    /// Run the protocol with a live web UI hosted on localhost
+    VisualizeWeb {
+        #[arg(short, long, value_name = "FILE")]
+        instance: PathBuf,
+        #[arg(long, default_value_t = 8)]
+        rounds: u32,
+        #[arg(long, default_value_t = 8787)]
+        port: u16,
+    },
 }
 
 fn main() {
@@ -72,9 +86,23 @@ fn run() -> CliResult<()> {
     let cli = Cli::parse();
     match cli.command {
         Commands::Generate { nodes, output } => run_generate(nodes, output)?,
-        Commands::Prove { instance, proof, rounds } => run_prove(instance, proof, rounds)?,
+        Commands::Prove {
+            instance,
+            proof,
+            rounds,
+        } => run_prove(instance, proof, rounds)?,
         Commands::Verify { instance, proof } => run_verify(instance, proof)?,
-        Commands::Benchmark { nodes, rounds, samples } => run_benchmark(nodes, rounds, samples)?,
+        Commands::Benchmark {
+            nodes,
+            rounds,
+            samples,
+        } => run_benchmark(nodes, rounds, samples)?,
+        Commands::Visualize { instance, rounds } => run_visualize(instance, rounds)?,
+        Commands::VisualizeWeb {
+            instance,
+            rounds,
+            port,
+        } => run_visualize_web(instance, rounds, port)?,
     }
     Ok(())
 }
@@ -84,7 +112,11 @@ fn run_generate(nodes: u32, output: PathBuf) -> CliResult<()> {
     let (graph, coloration, params) = generate_hard_instance(nodes);
     println!(
         "  n = {}, tournament k = {}, grid = {}x{}, blank budget = {}",
-        params.nodes, params.tournament_size, params.grid_rows, params.grid_cols, params.blank_budget
+        params.nodes,
+        params.tournament_size,
+        params.grid_rows,
+        params.grid_cols,
+        params.blank_budget
     );
     let instance = GraphInstance::with_metadata(graph, coloration, params);
     save_graph_instance(&output, &instance)?;
@@ -108,7 +140,10 @@ fn run_verify(instance_path: PathBuf, proof_path: PathBuf) -> CliResult<()> {
     let instance = load_graph_instance(&instance_path)?;
     let transcript = load_proof(&proof_path)?;
     replay_transcript(&instance, &transcript)?;
-    println!("Transcript verified successfully against {}", instance_path.display());
+    println!(
+        "Transcript verified successfully against {}",
+        instance_path.display()
+    );
     Ok(())
 }
 
@@ -154,11 +189,239 @@ fn run_benchmark(nodes: u32, rounds: u32, samples: u32) -> CliResult<()> {
     Ok(())
 }
 
+fn run_visualize(instance_path: PathBuf, rounds: u32) -> CliResult<()> {
+    let instance = load_graph_instance(&instance_path)?;
+    if instance.graph.n > 10 {
+        return Err("visualization currently supports graphs with at most 10 nodes".into());
+    }
+    let verifier_cfg = VerifierConfig {
+        rounds,
+        ..VerifierConfig::default()
+    };
+    let prover_cfg = ProverConfig::default();
+    let mut visualizer = Visualizer::for_instance(&instance, &verifier_cfg, &prover_cfg.stark)?;
+    visualizer.log(format!("Loaded instance from {}", instance_path.display()))?;
+
+    let mut prover = ProverState::new(instance.graph.clone(), instance.coloration.clone());
+    let mut verifier = Verifier::new(instance.coloration.clone(), verifier_cfg.clone());
+
+    visualizer.log("Committing to permuted graph...")?;
+    let commitments = prover.commit(&prover_cfg);
+    verifier.receive_commitments(commitments.clone());
+    visualizer.set_commitments(&commitments)?;
+    visualizer.set_focus(None)?;
+    visualizer.set_merkle(None)?;
+
+    for round in 0..rounds {
+        let challenge = verifier.generate_challenge(round);
+        match challenge {
+            Challenge::Spot(challenge) => {
+                let detail = challenge
+                    .spots
+                    .iter()
+                    .map(|nodes| format!("[{},{},{}]", nodes[0], nodes[1], nodes[2]))
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                let response = prover.respond_to_spot_challenge(&challenge);
+                let verified = verifier.verify_spot_response(&challenge, &response);
+                let status = if verified { "verified" } else { "rejected" };
+                visualizer.update_round(RoundSnapshot {
+                    round: Some(round),
+                    phase: "spot challenge".to_string(),
+                    detail: format!("triads: {detail}"),
+                    status: status.to_string(),
+                })?;
+                let focus = focus_from_spot_response(
+                    &format!("#{:02}", round + 1),
+                    &challenge.spots,
+                    &response,
+                );
+                visualizer.set_focus(Some(focus))?;
+                let merkle = response
+                    .responses
+                    .iter()
+                    .flat_map(|spot| spot.edges.iter())
+                    .next()
+                    .map(|opening| {
+                        merkle_display_from_chunked(
+                            &format!("edge {}→{}", opening.from, opening.to),
+                            &opening.proof,
+                        )
+                    });
+                visualizer.set_merkle(merkle)?;
+                visualizer.log(format!("Round {}: spot challenge {status}", round + 1))?;
+                if !verified {
+                    visualizer.finish().ok();
+                    return Err(format!("spot response rejected in round {round}").into());
+                }
+            }
+            Challenge::Blank(challenge) => {
+                let response = prover.respond_to_blank_challenge(&challenge);
+                let verified = verifier.verify_blank_response(&challenge, &response);
+                let status = if verified { "verified" } else { "rejected" };
+                visualizer.update_round(RoundSnapshot {
+                    round: Some(round),
+                    phase: "blank challenge".to_string(),
+                    detail: format!("edges checked: {}", challenge.edge_indices.len()),
+                    status: status.to_string(),
+                })?;
+                let focus = focus_from_blank_response(
+                    &format!("#{:02}", round + 1),
+                    &challenge.edge_indices,
+                    &response,
+                );
+                visualizer.set_focus(Some(focus))?;
+                let merkle = response.edges.first().map(|opening| {
+                    merkle_display_from_chunked(
+                        &format!("edge {}→{} (color)", opening.from, opening.to),
+                        &opening.color_proof,
+                    )
+                });
+                visualizer.set_merkle(merkle)?;
+                visualizer.log(format!(
+                    "Round {}: blank challenge {} ({} edges)",
+                    round + 1,
+                    status,
+                    challenge.edge_indices.len()
+                ))?;
+                if !verified {
+                    visualizer.finish().ok();
+                    return Err(format!("blank response rejected in round {round}").into());
+                }
+            }
+        }
+    }
+
+    visualizer
+        .wait_for_exit("Protocol completed successfully. Press q or Esc to exit visualization.")?;
+    println!("Visualization finished.");
+    Ok(())
+}
+
+fn run_visualize_web(instance_path: PathBuf, rounds: u32, port: u16) -> CliResult<()> {
+    let instance = load_graph_instance(&instance_path)?;
+    if instance.graph.n > 10 {
+        return Err("web visualization currently supports graphs with at most 10 nodes".into());
+    }
+    let verifier_cfg = VerifierConfig {
+        rounds,
+        ..VerifierConfig::default()
+    };
+    let prover_cfg = ProverConfig::default();
+    let mut visualizer =
+        WebVisualizer::for_instance(&instance, &verifier_cfg, &prover_cfg.stark, port)?;
+    println!(
+        "Web UI running on {} (serving graph {})",
+        visualizer.base_url(),
+        instance_path.display()
+    );
+    visualizer.log(format!("Loaded instance from {}", instance_path.display()))?;
+
+    let mut prover = ProverState::new(instance.graph.clone(), instance.coloration.clone());
+    let mut verifier = Verifier::new(instance.coloration.clone(), verifier_cfg.clone());
+
+    visualizer.log("Committing to permuted graph...")?;
+    let commitments = prover.commit(&prover_cfg);
+    verifier.receive_commitments(commitments.clone());
+    visualizer.set_commitments(&commitments)?;
+    visualizer.set_focus(None)?;
+    visualizer.set_merkle(None)?;
+
+    for round in 0..rounds {
+        let challenge = verifier.generate_challenge(round);
+        match challenge {
+            Challenge::Spot(challenge) => {
+                let detail = challenge
+                    .spots
+                    .iter()
+                    .map(|nodes| format!("[{}, {}, {}]", nodes[0], nodes[1], nodes[2]))
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                let response = prover.respond_to_spot_challenge(&challenge);
+                let verified = verifier.verify_spot_response(&challenge, &response);
+                let status = if verified { "verified" } else { "rejected" };
+                visualizer.update_round(RoundSnapshot {
+                    round: Some(round),
+                    phase: "spot challenge".to_string(),
+                    detail: format!("triads: {detail}"),
+                    status: status.to_string(),
+                })?;
+                let focus = focus_from_spot_response(
+                    &format!("#{:02}", round + 1),
+                    &challenge.spots,
+                    &response,
+                );
+                visualizer.set_focus(Some(focus))?;
+                let merkle = response
+                    .responses
+                    .iter()
+                    .flat_map(|spot| spot.edges.iter())
+                    .next()
+                    .map(|opening| {
+                        merkle_display_from_chunked(
+                            &format!("edge {}→{}", opening.from, opening.to),
+                            &opening.proof,
+                        )
+                    });
+                visualizer.set_merkle(merkle)?;
+                visualizer.log(format!("Round {}: spot challenge {status}", round + 1))?;
+                if !verified {
+                    visualizer.finish().ok();
+                    return Err(format!("spot response rejected in round {round}").into());
+                }
+            }
+            Challenge::Blank(challenge) => {
+                let response = prover.respond_to_blank_challenge(&challenge);
+                let verified = verifier.verify_blank_response(&challenge, &response);
+                let status = if verified { "verified" } else { "rejected" };
+                visualizer.update_round(RoundSnapshot {
+                    round: Some(round),
+                    phase: "blank challenge".to_string(),
+                    detail: format!("edges checked: {}", challenge.edge_indices.len()),
+                    status: status.to_string(),
+                })?;
+                let focus = focus_from_blank_response(
+                    &format!("#{:02}", round + 1),
+                    &challenge.edge_indices,
+                    &response,
+                );
+                visualizer.set_focus(Some(focus))?;
+                let merkle = response.edges.first().map(|opening| {
+                    merkle_display_from_chunked(
+                        &format!("edge {}→{} (color)", opening.from, opening.to),
+                        &opening.color_proof,
+                    )
+                });
+                visualizer.set_merkle(merkle)?;
+                visualizer.log(format!(
+                    "Round {}: blank challenge {} ({} edges)",
+                    round + 1,
+                    status,
+                    challenge.edge_indices.len()
+                ))?;
+                if !verified {
+                    visualizer.finish().ok();
+                    return Err(format!("blank response rejected in round {round}").into());
+                }
+            }
+        }
+    }
+
+    visualizer.wait_for_exit(
+        "Protocol completed successfully. Inspect the dashboard, then press Enter to stop the server.",
+    )?;
+    println!("Web visualization finished.");
+    Ok(())
+}
+
 fn construct_transcript(instance: &GraphInstance, rounds: u32) -> CliResult<ProofTranscript> {
     let mut prover = ProverState::new(instance.graph.clone(), instance.coloration.clone());
     let mut verifier = Verifier::new(
         instance.coloration.clone(),
-        VerifierConfig { rounds, ..Default::default() },
+        VerifierConfig {
+            rounds,
+            ..Default::default()
+        },
     );
 
     let config = ProverConfig::default();
@@ -219,10 +482,9 @@ fn replay_transcript(instance: &GraphInstance, transcript: &ProofTranscript) -> 
                 }
             }
             _ => {
-                return Err(format!(
-                    "challenge/response mismatch encountered in round {idx}"
-                )
-                .into());
+                return Err(
+                    format!("challenge/response mismatch encountered in round {idx}").into(),
+                );
             }
         }
     }

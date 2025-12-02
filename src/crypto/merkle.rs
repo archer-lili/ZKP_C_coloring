@@ -165,10 +165,7 @@ impl ChunkedMerkleTree {
             chunk_trees.push(tree);
         }
 
-        let top_leaves: Vec<Vec<u8>> = chunk_roots
-            .iter()
-            .map(|root| root.to_vec())
-            .collect();
+        let top_leaves: Vec<Vec<u8>> = chunk_roots.iter().map(|root| root.to_vec()).collect();
         let top_tree = MerkleTree::new(&top_leaves, hasher);
 
         ChunkedMerkleTree {

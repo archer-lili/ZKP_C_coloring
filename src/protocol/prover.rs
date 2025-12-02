@@ -3,14 +3,8 @@ use crate::crypto::merkle::{ChunkedMerkleTree, GraphMerkleTree, MerkleTree};
 use crate::crypto::polynomial::BlankPolynomial;
 use crate::graph::{Color, ColorationSet, Graph};
 use crate::protocol::messages::{
-    BlankChallenge,
-    BlankChallengeResponse,
-    BlankEdgeOpening,
-    Commitments,
-    SpotChallenge,
-    SpotChallengeResponse,
-    SpotEdgeOpening,
-    SpotResponse,
+    BlankChallenge, BlankChallengeResponse, BlankEdgeOpening, Commitments, SpotChallenge,
+    SpotChallengeResponse, SpotEdgeOpening, SpotResponse,
 };
 use crate::stark::constraints::BlankCountConstraints;
 use crate::stark::prover::{generate_blank_count_proof, BlankCountProof, StarkParameters};
@@ -84,13 +78,16 @@ impl ProverState {
 
         let blank_vector = self.build_blank_vector();
         let blank_chunks: Vec<Vec<u8>> = blank_vector.iter().map(|&bit| vec![bit]).collect();
-        let blank_tree = ChunkedMerkleTree::new(&blank_chunks, &self.hasher, config.stark.chunk_size);
+        let blank_tree =
+            ChunkedMerkleTree::new(&blank_chunks, &self.hasher, config.stark.chunk_size);
         let blank_root = blank_tree.root();
         self.blank_tree = Some(blank_tree);
 
         let polynomial = BlankPolynomial::new(blank_vector);
-        let constraints = BlankCountConstraints::<StarkField>::new(n, self.coloration_set.blank_limit() as u64);
-        let proof = generate_blank_count_proof(&polynomial, &constraints, &config.stark, &self.hasher);
+        let constraints =
+            BlankCountConstraints::<StarkField>::new(n, self.coloration_set.blank_limit() as u64);
+        let proof =
+            generate_blank_count_proof(&polynomial, &constraints, &config.stark, &self.hasher);
 
         self.blank_polynomial = Some(polynomial);
         self.stark_proof = Some(proof.clone());
@@ -128,11 +125,9 @@ impl ProverState {
                         bytes.push(color.to_u8());
                         let expected = self.hasher.hash(&bytes);
                         debug_assert_eq!(
-                            proof.leaf_proof.leaf_hash,
-                            expected,
+                            proof.leaf_proof.leaf_hash, expected,
                             "edge proof hash mismatch for ({}, {})",
-                            a,
-                            b
+                            a, b
                         );
                     }
                     edges.push(SpotEdgeOpening {
@@ -152,10 +147,7 @@ impl ProverState {
         SpotChallengeResponse { responses }
     }
 
-    pub fn respond_to_blank_challenge(
-        &self,
-        challenge: &BlankChallenge,
-    ) -> BlankChallengeResponse {
+    pub fn respond_to_blank_challenge(&self, challenge: &BlankChallenge) -> BlankChallengeResponse {
         let graph_tree = self
             .graph_tree
             .as_ref()

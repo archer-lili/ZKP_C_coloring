@@ -20,7 +20,8 @@ pub struct BlankCountConstraints<F: FftField> {
 impl<F: FftField> BlankCountConstraints<F> {
     pub fn new(n: u32, expected_sum: u64) -> Self {
         let n_squared = (n as usize).saturating_mul(n as usize).max(1);
-        let domain = Radix2EvaluationDomain::<F>::new(n_squared.next_power_of_two()).expect("radix2 domain");
+        let domain =
+            Radix2EvaluationDomain::<F>::new(n_squared.next_power_of_two()).expect("radix2 domain");
         BlankCountConstraints {
             n,
             expected_sum,

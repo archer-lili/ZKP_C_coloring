@@ -16,7 +16,12 @@ pub fn generate_hard_instance(n: u32) -> (Graph, ColorationSet, InstanceParamete
     let mut graph = Graph::new(n);
     initialize_dense_edges(&mut graph);
     embed_tournament(&mut graph, params.tournament_size);
-    embed_grid(&mut graph, params.tournament_size, params.grid_rows, params.grid_cols);
+    embed_grid(
+        &mut graph,
+        params.tournament_size,
+        params.grid_rows,
+        params.grid_cols,
+    );
     encode_node_codes(&mut graph, params.tournament_size);
 
     let mut blank_budget = BlankBudget::new(params.blank_budget);
@@ -55,8 +60,7 @@ fn derive_parameters(n: u32) -> InstanceParameters {
     while tournament_size + grid_rows * grid_cols > n && grid_rows > 2 {
         grid_rows -= 1;
     }
-    let blank_budget = (tournament_size + 4 * grid_cols * grid_rows)
-        .min(n.saturating_mul(n));
+    let blank_budget = (tournament_size + 4 * grid_cols * grid_rows).min(n.saturating_mul(n));
 
     InstanceParameters {
         nodes: n,
@@ -117,7 +121,11 @@ fn encode_node_codes(graph: &mut Graph, tournament_size: u32) {
     for (idx, node) in ((tournament_size)..graph.n).enumerate() {
         for bit in 0..tournament_size {
             let pattern = ((idx as u32) >> (bit % 16)) & 1;
-            let color = if pattern == 1 { Color::Red } else { Color::Green };
+            let color = if pattern == 1 {
+                Color::Red
+            } else {
+                Color::Green
+            };
             graph.overwrite_edge(node, bit, color);
             graph.overwrite_edge(bit, node, color);
         }

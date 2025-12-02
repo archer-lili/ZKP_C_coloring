@@ -80,6 +80,10 @@ impl ColorationSet {
     pub fn graph_size(&self) -> u32 {
         self.graph_size
     }
+
+    pub fn pattern_count(&self) -> usize {
+        self.allowed_spots.len()
+    }
 }
 
 impl ColorationSet {

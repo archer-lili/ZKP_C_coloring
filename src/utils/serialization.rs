@@ -1,5 +1,7 @@
 use crate::graph::{ColorationSet, Graph};
-use crate::protocol::messages::{BlankChallengeResponse, Challenge, Commitments, SpotChallengeResponse};
+use crate::protocol::messages::{
+    BlankChallengeResponse, Challenge, Commitments, SpotChallengeResponse,
+};
 use crate::utils::random_graph::InstanceParameters;
 use serde::{Deserialize, Serialize};
 use std::fs;

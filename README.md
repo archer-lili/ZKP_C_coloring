@@ -3,7 +3,7 @@
 Quantum-resistant zero-knowledge proofs for directed graph coloration. The prover commits to a permuted graph, answers spot and blank challenges backed by Merkle trees, and proves the blank budget with a STARK-style argument. The verifier deterministically derives challenges from the commitments and replayable transcripts.
 
 ## What is already implemented?
-- Hard-instance graph generator that embeds a tournament, toroidal grid, and encoded node IDs with a tunable blank budget (`src/utils/random_graph.rs`).
+- Hard-instance graph generator that embeds a tournament, toroidal grid, and encoded node IDs with a tunable blank budget (not done)(`src/utils/random_graph.rs`).
 - Permutation-invariant spot checking plus chunked Merkle commitments for edges, permutation vectors, and blank bits.
 - Blank-count STARK proof (constraints, FRI sampling, proof/verification) with Blake3 hashing.
 - Full CLI (`cargo run -- <command>`) supporting graph generation, transcript creation, transcript verification, and benchmarking.
@@ -53,6 +53,44 @@ Deterministically replays each round against the commitments.
 cargo run -- benchmark --nodes 64 --rounds 12 --samples 5
 ```
 Generates fresh graphs per sample and reports average prove/verify timings.
+
+## Live visualization UI
+
+Track every commitment, challenge, and response in a dedicated terminal dashboard powered by `ratatui`:
+
+```bash
+cargo run -- visualize --instance instances/graph64.bin --rounds 10
+```
+
+The UI shows:
+- Graph structure summary (node count, blank edges, sampled colored edges).
+- Live force-circle drawing of the committed graph (colored edges plus node labels) so you can see permutations taking effect in real time.
+- Coloring and commitment roots (graph/permutation/blank trees).
+- Verifier and STARK constraints (round count, spot probability, chunk size, etc.).
+- A continuously refreshing log that calls out every spot and blank validation as it happens.
+
+The dashboard stays onscreen until you press `q` (or `Esc`), so you have time to inspect the final state.
+
+Because the visualizer drives the real prover/verifier code, what you see is the actual protocol execution—no mock data or shortcuts.
+
+### Web dashboard
+
+If you want smoother edges and a richer layout, spin up the browser-based dashboard:
+
+```bash
+cargo run --bin zkp_c_coloring -- visualize-web --instance instances/graph10.bin --rounds 10 --port 8787
+```
+
+The CLI hosts a local Axum server (default `127.0.0.1:8787`) that serves a fully animated canvas view, challenge focus panel, and Merkle-path navigator. Leave the terminal running, open the printed URL in your browser, and press Enter in the terminal when you are ready to shut it down.
+
+> **Note:** The UI now focuses on clarity over scale and only accepts graph instances with ≤10 nodes. Re-run `cargo run -- generate --nodes 10` (or smaller) before launching the visualizers.
+
+The dashboard highlights:
+
+- Pulsing edges/nodes for every spot or blank challenge, color-coded by edge assignment.
+- Live statistics for the coloration constraint set `C` (|C| matches the number of admissible triads embedded in the instance).
+- A Merkle viewer that walks the chunked proof path (leaf and chunk trees animate step-by-step).
+- Streaming logs, commitments, and STARK parameters synchronized with the prover/verifier state machine.
 
 ## Tests
 
