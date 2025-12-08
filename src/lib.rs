@@ -21,5 +21,6 @@ pub use stark::prover::{generate_blank_count_proof, BlankCountProof, StarkParame
 pub use stark::StarkField;
 pub use ui::{
     focus_from_blank_response, focus_from_spot_response, merkle_display_from_chunked,
-    ChallengeFocus, MerkleDisplay, RoundSnapshot, Visualizer, WebVisualizer,
+    spot_checks_from_response, ChallengeFocus, MerkleDisplay, RoundSnapshot, Visualizer,
+    WebVisualizer,
 };

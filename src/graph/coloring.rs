@@ -84,6 +84,12 @@ impl ColorationSet {
     pub fn pattern_count(&self) -> usize {
         self.allowed_spots.len()
     }
+
+    pub fn patterns(&self) -> Vec<[u8; 9]> {
+        let mut keys: Vec<[u8; 9]> = self.allowed_spots.iter().copied().collect();
+        keys.sort();
+        keys
+    }
 }
 
 impl ColorationSet {

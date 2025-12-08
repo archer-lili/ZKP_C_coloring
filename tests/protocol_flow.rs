@@ -4,11 +4,11 @@ use zkp_c_coloring::protocol::verifier::{Verifier, VerifierConfig};
 use zkp_c_coloring::utils::random_graph::generate_hard_instance;
 
 #[test]
-fn graph_generator_respects_blank_budget() {
+fn graph_generator_tracks_blank_edges() {
     let nodes = 32;
     let (graph, _coloration, params) = generate_hard_instance(nodes);
     assert_eq!(graph.n, nodes);
-    assert_eq!(graph.blank_count(), params.blank_budget);
+    assert_eq!(graph.blank_count(), params.blank_edges);
 }
 
 #[test]

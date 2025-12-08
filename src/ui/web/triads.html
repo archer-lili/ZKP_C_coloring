@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <title>Permissible Triads Catalog</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600&family=IBM+Plex+Mono:wght@400;600&display=swap');
+        :root {
+            color-scheme: dark;
+            font-family: "Space Grotesk", "IBM Plex Sans", system-ui, sans-serif;
+            --bg: #04070d;
+            --panel: #0b111a;
+            --border: rgba(120, 132, 163, 0.25);
+            --text: #ecf0f8;
+            --muted: #8f98b5;
+            --accent: #6b89c6;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1680px;
+            margin: 0 auto;
+            padding: 36px 28px 64px;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 24px;
+            padding: 24px 28px;
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+        }
+        .header h1 {
+            margin: 0 0 6px 0;
+            font-size: 1.7rem;
+        }
+        .header p {
+            margin: 0;
+            color: var(--muted);
+        }
+        .link-button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px 20px;
+            border-radius: 10px;
+            background: rgba(107, 137, 198, 0.12);
+            border: 1px solid rgba(107, 137, 198, 0.42);
+            color: #c3d4ff;
+            font-weight: 600;
+            text-decoration: none;
+            transition: background 0.2s ease, border-color 0.2s ease;
+        }
+        .link-button:hover {
+            background: rgba(107, 137, 198, 0.22);
+            border-color: rgba(107, 137, 198, 0.6);
+        }
+        .summary-panel {
+            margin-top: 28px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 18px;
+        }
+        .summary-card {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 18px;
+        }
+        .summary-label {
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--muted);
+        }
+        .summary-value {
+            font-size: 1.4rem;
+            font-weight: 600;
+            margin-top: 8px;
+        }
+        .summary-note {
+            margin-top: 4px;
+            color: var(--muted);
+            font-size: 0.85rem;
+        }
+        .grid-panel {
+            margin-top: 32px;
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            padding: 24px;
+        }
+        .grid-header {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 18px;
+            color: var(--muted);
+            font-size: 0.9rem;
+        }
+        .triad-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 18px;
+        }
+        .triad-card {
+            border: 1px solid rgba(124, 138, 168, 0.35);
+            border-radius: 14px;
+            padding: 14px;
+            background: rgba(6, 9, 16, 0.92);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .triad-card h3 {
+            margin: 0;
+            font-size: 0.82rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--muted);
+        }
+        .triad-card svg {
+            width: 100%;
+            height: 140px;
+        }
+        .triad-signature {
+            font-size: 0.78rem;
+            font-family: "IBM Plex Mono", monospace;
+            color: var(--muted);
+        }
+        .status-text {
+            color: var(--muted);
+            font-size: 0.85rem;
+            margin-top: 14px;
+            text-align: right;
+        }
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div>
+                <h1>Permissible Triads Catalog</h1>
+                <p>The canonicalized set C′ of 3-node patterns that stay valid across all permutations.</p>
+            </div>
+            <a class="link-button" href="/">← Back to dashboard</a>
+        </header>
+        <section class="summary-panel">
+            <div class="summary-card">
+                <div class="summary-label">total triads |C′|</div>
+                <div id="total-triads" class="summary-value">–</div>
+                <div class="summary-note">Loaded from the current graph instance.</div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-label">canonical patterns</div>
+                <div id="canonical-count" class="summary-value">–</div>
+                <div class="summary-note">Equivalent triads collapse to one representative.</div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-label">blank edge budget</div>
+                <div id="blank-budget" class="summary-value">–</div>
+                <div class="summary-note">Provided for context while reviewing the catalog.</div>
+            </div>
+        </section>
+        <section class="grid-panel">
+            <div class="grid-header">
+                <span>Each card shows one canonical 3-node pattern, including directionality and edge colors.</span>
+                <span id="catalog-status">Loading triads…</span>
+            </div>
+            <div id="triad-grid" class="triad-grid"></div>
+            <div class="status-text" id="update-status">Waiting for snapshot…</div>
+        </section>
+    </div>
+
+    <script>
+        const palette = {
+            Red: '#c57b74',
+            Green: '#6ba68a',
+            Yellow: '#d4b26a',
+            Blank: '#7a8194',
+        };
+
+        let lastSignature = '';
+
+        function renderMiniTriad(pattern) {
+            const nodes = [
+                { id: 0, label: '1', x: 30, y: 16 },
+                { id: 1, label: '2', x: 14, y: 48 },
+                { id: 2, label: '3', x: 46, y: 48 },
+            ];
+            const edges = (pattern.edges || []).filter(edge => edge.color && edge.color !== 'Blank');
+            const defs = [];
+            const segments = edges.map((edge, idx) => {
+                const start = nodes[edge.from];
+                const end = nodes[edge.to];
+                if (!start || !end) return '';
+                const color = palette[edge.color] || '#8d96ad';
+                if (edge.from === edge.to) {
+                    return `<circle cx="${start.x}" cy="${start.y - 7}" r="6" stroke="${color}" stroke-width="1.8" fill="none" opacity="0.8" />`;
+                }
+                const dx = end.x - start.x;
+                const dy = end.y - start.y;
+                const length = Math.hypot(dx, dy) || 1;
+                const pad = 6;
+                const startX = start.x + (dx / length) * pad;
+                const startY = start.y + (dy / length) * pad;
+                const endX = end.x - (dx / length) * pad;
+                const endY = end.y - (dy / length) * pad;
+                const bend = ((edge.from + edge.to) % 2 === 0 ? 6 : -6);
+                const ctrlX = (startX + endX) / 2 + (dy / length) * bend;
+                const ctrlY = (startY + endY) / 2 - (dx / length) * bend;
+                const markerId = `triad-arrow-${pattern.id}-${idx}`;
+                defs.push(`
+                    <marker id="${markerId}" markerWidth="6" markerHeight="6" refX="4" refY="3" orient="auto" markerUnits="strokeWidth">
+                        <path d="M0,0 L0,6 L6,3 z" fill="${color}" />
+                    </marker>
+                `);
+                return `<path d="M ${startX} ${startY} Q ${ctrlX} ${ctrlY} ${endX} ${endY}" stroke="${color}" stroke-width="1.8" fill="none" opacity="0.85" marker-end="url(#${markerId})" />`;
+            }).join('');
+
+            const nodesSvg = nodes.map(node => `
+                <g>
+                    <circle cx="${node.x}" cy="${node.y}" r="7" fill="#05070d" stroke="#b2bbcf" stroke-width="1.6" />
+                    <text x="${node.x}" y="${node.y + 2}" text-anchor="middle" font-size="8" font-family="Space Grotesk, sans-serif" fill="#ecf0f8">${node.label}</text>
+                </g>
+            `).join('');
+
+            const defsBlock = defs.length ? `<defs>${defs.join('')}</defs>` : '';
+            return `
+                <svg viewBox="0 0 60 64" role="img" aria-label="triad pattern">
+                    ${defsBlock}
+                    ${segments}
+                    ${nodesSvg}
+                </svg>
+            `;
+        }
+
+        function renderTriads(snapshot) {
+            const catalog = snapshot.triads;
+            const summaryTotal = document.getElementById('total-triads');
+            const summaryCanonical = document.getElementById('canonical-count');
+            const blankBudget = document.getElementById('blank-budget');
+            const grid = document.getElementById('triad-grid');
+            const catalogStatus = document.getElementById('catalog-status');
+
+            const graph = snapshot.graph || {};
+            const blankEdgesValue = typeof graph.blank_edges === 'number'
+                ? graph.blank_edges.toLocaleString()
+                : '–';
+            const blankLimitValue = typeof graph.blank_limit === 'number'
+                ? graph.blank_limit.toLocaleString()
+                : '–';
+
+            if (!catalog || !catalog.patterns || !catalog.patterns.length) {
+                summaryTotal.textContent = '0';
+                summaryCanonical.textContent = '0';
+                blankBudget.textContent = blankLimitValue;
+                grid.innerHTML = '<div class="summary-note">No triad data available.</div>';
+                catalogStatus.textContent = 'No patterns to display.';
+                return;
+            }
+
+            summaryTotal.textContent = catalog.total.toLocaleString();
+            summaryCanonical.textContent = catalog.patterns.length.toLocaleString();
+            blankBudget.textContent = `${blankEdgesValue}/${blankLimitValue}`;
+
+            const signature = catalog.patterns.map(p => p.signature).join('|');
+            if (signature === lastSignature) {
+                return;
+            }
+            lastSignature = signature;
+
+            const cards = catalog.patterns
+                .slice()
+                .sort((a, b) => a.id - b.id)
+                .map(pattern => {
+                    const label = pattern.id.toString().padStart(2, '0');
+                    return `
+                        <article class="triad-card">
+                            <h3>Pattern #${label}</h3>
+                            ${renderMiniTriad(pattern)}
+                            <div class="triad-signature">${pattern.signature}</div>
+                        </article>
+                    `;
+                })
+                .join('');
+
+            grid.innerHTML = cards;
+            catalogStatus.textContent = `${catalog.patterns.length} canonical patterns loaded.`;
+        }
+
+        async function refresh() {
+            try {
+                const response = await fetch('/snapshot');
+                if (!response.ok) throw new Error('bad response');
+                const snapshot = await response.json();
+                renderTriads(snapshot);
+                const timestamp = new Date().toLocaleTimeString();
+                document.getElementById('update-status').textContent = `Last updated ${timestamp}`;
+            } catch (err) {
+                document.getElementById('catalog-status').textContent = 'Unable to load triads yet…';
+                console.warn('Triad refresh error:', err);
+            }
+        }
+
+        refresh();
+        setInterval(refresh, 1200);
+    </script>
+</body>
+</html>

@@ -26,6 +26,18 @@ Quantum-resistant zero-knowledge proofs for directed graph coloration. The prove
 ## Running the CLI
 All commands assume a recent stable Rust toolchain.
 
+### Quick start (10-node demo)
+The visualization stacks expect graphs with at most 10 nodes. The following commands create a demo instance, run the terminal dashboard, and host the browser UI:
+
+```bash
+cargo test
+cargo run --bin zkp_c_coloring -- generate --nodes 10 --output instances/demo10.bin
+cargo run --bin zkp_c_coloring -- visualize --instance instances/demo10.bin --rounds 3 --spots-per-round 2 --spot-prob 1.0
+cargo run --bin zkp_c_coloring -- visualize-web --instance instances/demo10.bin --rounds 3 --spots-per-round 2 --spot-prob 1.0 --port 8787
+```
+
+Leave the terminal visualizer open (press `q` to exit) and keep the web server running until you are done inspecting `http://127.0.0.1:8787`, then press Enter in the hosting terminal.
+
 ```bash
 cargo run -- --help
 ```
@@ -67,6 +79,7 @@ The UI shows:
 - Live force-circle drawing of the committed graph (colored edges plus node labels) so you can see permutations taking effect in real time.
 - Coloring and commitment roots (graph/permutation/blank trees).
 - Verifier and STARK constraints (round count, spot probability, chunk size, etc.).
+- A canonical `C'` catalog that renders every permissible triad as a mini-graph plus the live status of each spot check compared against that set.
 - A continuously refreshing log that calls out every spot and blank validation as it happens.
 
 The dashboard stays onscreen until you press `q` (or `Esc`), so you have time to inspect the final state.
@@ -81,15 +94,16 @@ If you want smoother edges and a richer layout, spin up the browser-based dashbo
 cargo run --bin zkp_c_coloring -- visualize-web --instance instances/graph10.bin --rounds 10 --port 8787
 ```
 
-The CLI hosts a local Axum server (default `127.0.0.1:8787`) that serves a fully animated canvas view, challenge focus panel, and Merkle-path navigator. Leave the terminal running, open the printed URL in your browser, and press Enter in the terminal when you are ready to shut it down.
+The CLI hosts a local Axum server (default `127.0.0.1:8787`) that serves a calm canvas view, challenge focus panel, and a dedicated Merkle explorer at `/merkle`. Leave the terminal running, open the printed URL in your browser, and press Enter in the terminal when you are ready to shut it down.
 
 > **Note:** The UI now focuses on clarity over scale and only accepts graph instances with ≤10 nodes. Re-run `cargo run -- generate --nodes 10` (or smaller) before launching the visualizers.
 
 The dashboard highlights:
 
-- Pulsing edges/nodes for every spot or blank challenge, color-coded by edge assignment.
-- Live statistics for the coloration constraint set `C` (|C| matches the number of admissible triads embedded in the instance).
-- A Merkle viewer that walks the chunked proof path (leaf and chunk trees animate step-by-step).
+- Step-aware edge and node highlighting for every spot or blank challenge without the neon pulses.
+- Live statistics for the coloration constraint set `C` (|C| matches the number of admissible triads embedded in the instance) plus miniature graph renderings for every canonical triad in `C'`.
+- Visit `/merkle` for split leaf/chunk viewers with per-level legends so you can follow the traversal index without overlapping lines cluttering the main dashboard.
+- Visit `/triads` for the complete C′ gallery, including SVG renderings of each canonical 3-node pattern.
 - Streaming logs, commitments, and STARK parameters synchronized with the prover/verifier state machine.
 
 ## Tests

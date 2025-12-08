@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <title>Merkle Traversal Explorer</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600&family=IBM+Plex+Mono:wght@400;600&display=swap');
+        :root {
+            color-scheme: dark;
+            font-family: "Space Grotesk", "IBM Plex Sans", system-ui, sans-serif;
+            --bg: #05070d;
+            --panel: #0b111a;
+            --border: rgba(120, 132, 163, 0.25);
+            --text: #eef2fb;
+            --muted: #939cb7;
+            --accent-blue: #6b89c6;
+            --accent-green: #6ba68a;
+            --accent-yellow: #d4b26a;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1680px;
+            margin: 0 auto;
+            padding: 36px 28px 64px;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 20px;
+            padding: 20px 24px;
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+        }
+        .header h1 {
+            margin: 0 0 6px 0;
+            font-size: 1.6rem;
+        }
+        .header p {
+            margin: 0;
+            color: var(--muted);
+        }
+        .link-button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px 18px;
+            border-radius: 10px;
+            background: rgba(107, 137, 198, 0.12);
+            border: 1px solid rgba(107, 137, 198, 0.4);
+            color: #c3d4ff;
+            font-weight: 600;
+            text-decoration: none;
+            transition: background 0.2s ease, border-color 0.2s ease;
+        }
+        .link-button:hover {
+            background: rgba(107, 137, 198, 0.22);
+            border-color: rgba(107, 137, 198, 0.6);
+        }
+        .layout {
+            margin-top: 28px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(520px, 1fr));
+            gap: 28px;
+        }
+        .panel {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 22px;
+            min-height: 220px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+        .panel[data-span="2"] {
+            grid-column: span 2;
+        }
+        .panel[data-span="3"] {
+            grid-column: span 3;
+        }
+        .panel h2 {
+            margin: 0;
+            font-size: 0.95rem;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            color: var(--muted);
+        }
+        canvas {
+            width: 100%;
+            min-height: 420px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            background: radial-gradient(circle at top, rgba(255,255,255,0.03), rgba(5,7,13,0.9));
+        }
+        .controls {
+            gap: 16px;
+        }
+        .control-bar {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .control-bar button {
+            flex: 1;
+            padding: 10px 14px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            background: rgba(10, 14, 22, 0.9);
+            color: var(--text);
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s ease, border-color 0.2s ease;
+        }
+        .control-bar button:hover {
+            background: rgba(107, 137, 198, 0.18);
+            border-color: rgba(107, 137, 198, 0.6);
+        }
+        .meta-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+        }
+        .meta-item {
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            background: rgba(8, 12, 20, 0.8);
+        }
+        .meta-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--muted);
+        }
+        .meta-value {
+            font-family: "IBM Plex Mono", monospace;
+            font-size: 0.85rem;
+            margin-top: 6px;
+        }
+        .legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            font-size: 0.8rem;
+            color: var(--muted);
+        }
+        .legend span {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .legend-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        pre {
+            margin: 0;
+            font-family: "IBM Plex Mono", monospace;
+            font-size: 0.85rem;
+            color: var(--muted);
+            background: rgba(3, 5, 12, 0.8);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+            min-height: 160px;
+            white-space: pre-wrap;
+        }
+        @media (max-width: 960px) {
+            .layout {
+                grid-template-columns: 1fr;
+            }
+            .panel[data-span="2"],
+            .panel[data-span="3"] {
+                grid-column: span 1;
+            }
+            .header {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div>
+                <h1>Merkle Traversal Explorer</h1>
+                <p>Track leaf and chunk proofs without the rest of the dashboard noise.</p>
+            </div>
+            <a class="link-button" href="/">← Back to dashboard</a>
+        </header>
+        <main class="layout">
+            <section class="panel">
+                <h2>Leaf path</h2>
+                <canvas id="merkle-leaf-canvas"></canvas>
+            </section>
+            <section class="panel">
+                <h2>Chunk path</h2>
+                <canvas id="merkle-chunk-canvas"></canvas>
+            </section>
+            <section class="panel controls" data-span="3">
+                <h2>Traversal controls</h2>
+                <div class="control-bar">
+                    <button id="play-traversal">▶ Play</button>
+                    <button id="reset-traversal">↺ Reset</button>
+                    <button id="step-traversal">⏭ Step</button>
+                </div>
+                <div id="traversal-status" style="color: var(--muted); font-size: 0.85rem;">
+                    Waiting for Merkle data...
+                </div>
+                <div class="legend">
+                    <span><span class="legend-dot" style="background: var(--accent-blue);"></span>active edge</span>
+                    <span><span class="legend-dot" style="background: var(--accent-green);"></span>confirmed path</span>
+                    <span><span class="legend-dot" style="background: var(--accent-yellow);"></span>current level</span>
+                </div>
+            </section>
+            <section class="panel" data-span="2">
+                <h2>Proof snapshot</h2>
+                <div id="merkle-meta" class="meta-grid">
+                    <div class="meta-item">
+                        <div class="meta-label">status</div>
+                        <div class="meta-value">Waiting for snapshot...</div>
+                    </div>
+                </div>
+            </section>
+            <section class="panel" data-span="2">
+                <h2>Raw path digest</h2>
+                <pre id="merkle-log">No proof data yet.</pre>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        const leafCanvas = document.getElementById('merkle-leaf-canvas');
+        const leafCtx = leafCanvas.getContext('2d');
+        const chunkCanvas = document.getElementById('merkle-chunk-canvas');
+        const chunkCtx = chunkCanvas.getContext('2d');
+        const statusEl = document.getElementById('traversal-status');
+        const metaEl = document.getElementById('merkle-meta');
+        const logEl = document.getElementById('merkle-log');
+
+        const state = {
+            latestSnapshot: null,
+            merkleTree: null,
+            merkleSignature: null,
+            traversalState: {
+                currentPathIndex: 0,
+                isPlaying: false,
+                animationId: null,
+            },
+        };
+
+        function resizeCanvases() {
+            [leafCanvas, chunkCanvas].forEach(canvas => {
+                const parent = canvas.parentElement;
+                const width = parent ? parent.clientWidth : 420;
+                canvas.width = Math.max(width - 12, 320);
+                canvas.height = Math.max(420, Math.round(canvas.width * 0.7));
+            });
+        }
+
+        function buildMerkleTree(merkle) {
+            if (!merkle) return null;
+
+            const buildTree = (path, treeType) => {
+                if (!path || path.length === 0) return null;
+                const levels = [];
+                const total = path.length;
+
+                for (let levelIdx = 0; levelIdx < total; levelIdx++) {
+                    const nodesInLevel = Math.pow(2, total - 1 - levelIdx);
+                    const levelNodes = [];
+                    let currentPathIndex = 0;
+                    for (let i = 0; i < levelIdx; i++) {
+                        currentPathIndex = Math.floor(currentPathIndex / 2);
+                    }
+                    for (let nodeIdx = 0; nodeIdx < nodesInLevel; nodeIdx++) {
+                        const isPathNode = nodeIdx === currentPathIndex;
+                        const siblingIndex = currentPathIndex % 2 === 0 ? currentPathIndex + 1 : currentPathIndex - 1;
+                        const isSibling = nodeIdx === siblingIndex && siblingIndex < nodesInLevel;
+                        const isOnPath = isPathNode || isSibling;
+                        let label = '';
+                        if (levelIdx === 0) {
+                            label = treeType === 'leaf' ? 'Leaf' : 'Chunk';
+                        } else if (levelIdx === total - 1) {
+                            label = 'Root';
+                        } else {
+                            label = `L${levelIdx}`;
+                        }
+                        levelNodes.push({
+                            hash: isOnPath && path[levelIdx] ? path[levelIdx].hash : null,
+                            isPath: isOnPath,
+                            index: nodeIdx,
+                            label: isOnPath ? label : '',
+                        });
+                    }
+                    levels.push(levelNodes);
+                }
+                return { levels, path, treeType };
+            };
+
+            return {
+                leaf: buildTree(merkle.leaf_path || [], 'leaf'),
+                chunk: buildTree(merkle.chunk_path || [], 'chunk'),
+            };
+        }
+
+        function drawMerkleTreePanel(tree, canvasEl, ctx, traversalIndex = 0) {
+            if (!ctx || !canvasEl) return;
+            ctx.clearRect(0, 0, canvasEl.width, canvasEl.height);
+            if (!tree || !tree.levels || tree.levels.length === 0) return;
+
+            const nodeRadius = 14;
+            const levelHeight = 90;
+            const startY = 40;
+            const totalHeight = startY + levelHeight * (tree.levels.length - 1) + 60;
+            if (canvasEl.height < totalHeight) {
+                canvasEl.height = totalHeight;
+            }
+
+            const positions = tree.levels.map((level, levelIdx) => {
+                const y = startY + levelIdx * levelHeight;
+                const count = level.length;
+                const spacing = count > 1 ? (canvasEl.width - 80) / (count - 1) : 0;
+                const startX = count > 1 ? 40 : canvasEl.width / 2;
+                return level.map((_, idx) => ({ x: startX + idx * spacing, y }));
+            });
+
+            for (let levelIdx = 0; levelIdx < tree.levels.length - 1; levelIdx++) {
+                const level = tree.levels[levelIdx];
+                level.forEach((node, nodeIdx) => {
+                    const from = positions[levelIdx][nodeIdx];
+                    const parentIdx = Math.floor(nodeIdx / 2);
+                    const to = positions[levelIdx + 1][parentIdx];
+                    ctx.strokeStyle = 'rgba(110, 122, 148, 0.35)';
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.moveTo(from.x, from.y + nodeRadius);
+                    ctx.lineTo(to.x, to.y - nodeRadius);
+                    ctx.stroke();
+                });
+            }
+
+            for (let levelIdx = 0; levelIdx < tree.levels.length - 1; levelIdx++) {
+                const level = tree.levels[levelIdx];
+                level.forEach((node, nodeIdx) => {
+                    if (!node.isPath) return;
+                    const from = positions[levelIdx][nodeIdx];
+                    const parentIdx = Math.floor(nodeIdx / 2);
+                    const parentNode = tree.levels[levelIdx + 1][parentIdx];
+                    if (!parentNode || !parentNode.isPath) return;
+                    const to = positions[levelIdx + 1][parentIdx];
+                    const isCurrent = levelIdx === traversalIndex;
+                    const isTraversed = levelIdx < traversalIndex;
+                    ctx.strokeStyle = isCurrent ? '#d4b26a' : isTraversed ? '#6ba68a' : '#6b89c6';
+                    ctx.lineWidth = isCurrent ? 3 : 2;
+                    ctx.beginPath();
+                    ctx.moveTo(from.x, from.y + nodeRadius);
+                    ctx.lineTo(to.x, to.y - nodeRadius);
+                    ctx.stroke();
+                });
+            }
+
+            tree.levels.forEach((level, levelIdx) => {
+                level.forEach((node, nodeIdx) => {
+                    const pos = positions[levelIdx][nodeIdx];
+                    const isCurrent = levelIdx === traversalIndex && node.isPath;
+                    const isTraversed = levelIdx < traversalIndex && node.isPath;
+                    const isActive = levelIdx <= traversalIndex && node.isPath;
+                    let fill = 'rgba(90, 104, 132, 0.2)';
+                    if (isCurrent) {
+                        fill = 'rgba(212, 178, 106, 0.28)';
+                    } else if (isTraversed) {
+                        fill = 'rgba(107, 166, 138, 0.25)';
+                    } else if (isActive) {
+                        fill = 'rgba(107, 137, 198, 0.22)';
+                    }
+                    ctx.beginPath();
+                    ctx.arc(pos.x, pos.y, nodeRadius, 0, Math.PI * 2);
+                    ctx.fillStyle = fill;
+                    ctx.fill();
+                    ctx.lineWidth = isCurrent ? 3 : isActive ? 2 : 1;
+                    ctx.strokeStyle = isCurrent ? '#d4b26a' : isTraversed ? '#6ba68a' : isActive ? '#6b89c6' : 'rgba(125, 136, 160, 0.6)';
+                    ctx.stroke();
+                    if (node.label) {
+                        ctx.fillStyle = '#b8c0d8';
+                        ctx.font = '600 12px "Space Grotesk", sans-serif';
+                        ctx.textAlign = 'center';
+                        ctx.fillText(node.label, pos.x, pos.y - nodeRadius - 6);
+                    }
+                });
+            });
+        }
+
+        function refreshMerklePanels() {
+            const leafDepth = Math.max(0, (state.merkleTree?.leaf?.levels?.length || 1) - 1);
+            const chunkDepth = Math.max(0, (state.merkleTree?.chunk?.levels?.length || 1) - 1);
+            drawMerkleTreePanel(
+                state.merkleTree?.leaf,
+                leafCanvas,
+                leafCtx,
+                Math.min(state.traversalState.currentPathIndex, leafDepth)
+            );
+            drawMerkleTreePanel(
+                state.merkleTree?.chunk,
+                chunkCanvas,
+                chunkCtx,
+                Math.min(state.traversalState.currentPathIndex, chunkDepth)
+            );
+        }
+
+        function updateMeta(snapshot) {
+            if (!snapshot?.merkle) {
+                metaEl.innerHTML = `
+                    <div class="meta-item">
+                        <div class="meta-label">status</div>
+                        <div class="meta-value">Awaiting Merkle proof...</div>
+                    </div>`;
+                logEl.textContent = 'No proof data yet.';
+                statusEl.textContent = 'Waiting for Merkle data...';
+                return;
+            }
+            const merkle = snapshot.merkle;
+            const formatHash = (hash) => hash ? `${hash.slice(0, 10)}…${hash.slice(-6)}` : 'pending';
+            metaEl.innerHTML = `
+                <div class="meta-item">
+                    <div class="meta-label">leaf depth</div>
+                    <div class="meta-value">${merkle.leaf_path?.length || 0} levels</div>
+                </div>
+                <div class="meta-item">
+                    <div class="meta-label">chunk depth</div>
+                    <div class="meta-value">${merkle.chunk_path?.length || 0} levels</div>
+                </div>
+                <div class="meta-item">
+                    <div class="meta-label">graph root</div>
+                    <div class="meta-value">${formatHash(snapshot.commitments?.graph_root || '')}</div>
+                </div>
+                <div class="meta-item">
+                    <div class="meta-label">permutation root</div>
+                    <div class="meta-value">${formatHash(snapshot.commitments?.perm_root || '')}</div>
+                </div>
+            `;
+
+            const lines = [];
+            (merkle.leaf_path || []).forEach((step, idx) => {
+                lines.push(`Leaf L${idx}: ${step.hash}`);
+            });
+            if ((merkle.leaf_path || []).length && (merkle.chunk_path || []).length) {
+                lines.push('');
+            }
+            (merkle.chunk_path || []).forEach((step, idx) => {
+                lines.push(`Chunk L${idx}: ${step.hash}`);
+            });
+            logEl.textContent = lines.length ? lines.join('\n') : 'Path data unavailable.';
+        }
+
+        function updateStatus() {
+            const merkle = state.latestSnapshot?.merkle;
+            if (!merkle) {
+                statusEl.textContent = 'Waiting for Merkle data...';
+                return;
+            }
+            const maxPath = Math.max(
+                merkle.leaf_path?.length || 0,
+                merkle.chunk_path?.length || 0
+            );
+            const current = Math.min(state.traversalState.currentPathIndex + 1, maxPath || 1);
+            statusEl.textContent = `Step ${current} of ${maxPath || 1}`;
+        }
+
+        function animateTraversal() {
+            const merkle = state.latestSnapshot?.merkle;
+            if (!merkle) return;
+            const maxPath = Math.max(
+                merkle.leaf_path?.length || 0,
+                merkle.chunk_path?.length || 0
+            );
+            if (maxPath <= 1) {
+                state.traversalState.isPlaying = false;
+                if (state.traversalState.animationId) {
+                    clearInterval(state.traversalState.animationId);
+                    state.traversalState.animationId = null;
+                }
+                document.getElementById('play-traversal').textContent = '▶ Play';
+                return;
+            }
+            if (state.traversalState.currentPathIndex < maxPath - 1) {
+                state.traversalState.currentPathIndex++;
+                refreshMerklePanels();
+                updateStatus();
+            } else {
+                state.traversalState.isPlaying = false;
+                if (state.traversalState.animationId) {
+                    clearInterval(state.traversalState.animationId);
+                    state.traversalState.animationId = null;
+                }
+                document.getElementById('play-traversal').textContent = '▶ Play';
+            }
+        }
+
+        function setupControls() {
+            document.getElementById('play-traversal').addEventListener('click', function() {
+                if (state.traversalState.isPlaying) {
+                    state.traversalState.isPlaying = false;
+                    if (state.traversalState.animationId) {
+                        clearInterval(state.traversalState.animationId);
+                        state.traversalState.animationId = null;
+                    }
+                    this.textContent = '▶ Play';
+                } else {
+                    if (!state.latestSnapshot?.merkle) {
+                        statusEl.textContent = 'Still waiting for Merkle data...';
+                        return;
+                    }
+                    state.traversalState.isPlaying = true;
+                    this.textContent = '⏸ Pause';
+                    state.traversalState.animationId = setInterval(animateTraversal, 750);
+                }
+            });
+
+            document.getElementById('reset-traversal').addEventListener('click', () => {
+                state.traversalState.currentPathIndex = 0;
+                state.traversalState.isPlaying = false;
+                if (state.traversalState.animationId) {
+                    clearInterval(state.traversalState.animationId);
+                    state.traversalState.animationId = null;
+                }
+                document.getElementById('play-traversal').textContent = '▶ Play';
+                refreshMerklePanels();
+                updateStatus();
+            });
+
+            document.getElementById('step-traversal').addEventListener('click', () => {
+                state.traversalState.isPlaying = false;
+                if (state.traversalState.animationId) {
+                    clearInterval(state.traversalState.animationId);
+                    state.traversalState.animationId = null;
+                }
+                document.getElementById('play-traversal').textContent = '▶ Play';
+                animateTraversal();
+            });
+        }
+
+        async function refresh() {
+            try {
+                const response = await fetch('/snapshot');
+                if (!response.ok) throw new Error('Bad response');
+                const snapshot = await response.json();
+                state.latestSnapshot = snapshot;
+                updateMeta(snapshot);
+                if (!snapshot.merkle) {
+                    state.merkleTree = null;
+                    state.merkleSignature = null;
+                    state.traversalState.currentPathIndex = 0;
+                    state.traversalState.isPlaying = false;
+                    if (state.traversalState.animationId) {
+                        clearInterval(state.traversalState.animationId);
+                        state.traversalState.animationId = null;
+                    }
+                    document.getElementById('play-traversal').textContent = '▶ Play';
+                    refreshMerklePanels();
+                    return;
+                }
+
+                const signature = [
+                    (snapshot.merkle.leaf_path || []).map(step => step.hash).join('|'),
+                    (snapshot.merkle.chunk_path || []).map(step => step.hash).join('|'),
+                ].join('::');
+
+                if (signature !== state.merkleSignature) {
+                    state.traversalState.currentPathIndex = 0;
+                    state.traversalState.isPlaying = false;
+                    if (state.traversalState.animationId) {
+                        clearInterval(state.traversalState.animationId);
+                        state.traversalState.animationId = null;
+                    }
+                    document.getElementById('play-traversal').textContent = '▶ Play';
+                    state.merkleSignature = signature;
+                }
+
+                state.merkleTree = buildMerkleTree(snapshot.merkle);
+                refreshMerklePanels();
+                updateStatus();
+            } catch (err) {
+                statusEl.textContent = 'Unable to fetch snapshot yet...';
+                console.warn('Snapshot refresh failed:', err);
+            }
+        }
+
+        resizeCanvases();
+        setupControls();
+        refresh();
+        setInterval(refresh, 700);
+        window.addEventListener('resize', () => {
+            resizeCanvases();
+            refreshMerklePanels();
+        });
+    </script>
+</body>
+</html>

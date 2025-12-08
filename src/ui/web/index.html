@@ -4,22 +4,23 @@
     <meta charset="utf-8" />
     <title>ZKP-C Coloring – Web Visualizer</title>
     <style>
+            @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap');
         * {
             box-sizing: border-box;
         }
         :root {
             color-scheme: dark;
-            font-family: "Inter", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-            --bg-primary: #0a0e1a;
-            --bg-secondary: #0f172a;
-            --bg-card: rgba(15, 23, 42, 0.9);
-            --border: rgba(148, 163, 184, 0.2);
-            --text-primary: #f1f5f9;
-            --text-secondary: #94a3b8;
-            --accent-blue: #3b82f6;
-            --accent-green: #22c55e;
-            --accent-yellow: #fcd34d;
-            --accent-red: #ef4444;
+                font-family: "Space Grotesk", "DM Sans", "Segoe UI", system-ui, sans-serif;
+                --bg-primary: #04070d;
+                --bg-secondary: #0b111a;
+                --bg-card: rgba(10, 14, 22, 0.95);
+                --border: rgba(120, 132, 163, 0.22);
+                --text-primary: #ecf0f8;
+                --text-secondary: #8d96ad;
+                --accent-blue: #6b89c6;
+                --accent-green: #6ba68a;
+                --accent-yellow: #d4b26a;
+                --accent-red: #c5847c;
         }
         body {
             margin: 0;
@@ -51,14 +52,15 @@
         }
         .header h1 {
             margin: 0;
-            font-size: 1.5rem;
-            font-weight: 700;
+                font-size: 1.45rem;
+                font-weight: 600;
+                letter-spacing: 0.04em;
         }
         .status-badge {
             padding: 8px 16px;
             border-radius: 20px;
-            background: rgba(59, 130, 246, 0.15);
-            color: #93c5fd;
+                background: rgba(107, 137, 198, 0.18);
+                color: #c3d4ff;
             font-size: 0.875rem;
             font-weight: 600;
             text-transform: uppercase;
@@ -79,9 +81,10 @@
         .card {
             background: var(--bg-card);
             border: 1px solid var(--border);
-            border-radius: 12px;
+            border-radius: 14px;
             padding: 20px;
-            backdrop-filter: blur(10px);
+            backdrop-filter: blur(14px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
         }
         .card-title {
             font-size: 0.875rem;
@@ -93,10 +96,11 @@
         }
         .graph-container {
             position: relative;
-            background: #020617;
-            border-radius: 12px;
+            background: var(--bg-secondary);
+            border-radius: 16px;
             border: 1px solid var(--border);
             overflow: hidden;
+            box-shadow: inset 0 0 50px rgba(0, 0, 0, 0.5);
         }
         #graph-canvas {
             width: 100%;
@@ -143,18 +147,18 @@
             gap: 12px;
             padding: 14px;
             border-radius: 10px;
-            background: rgba(15, 23, 42, 0.5);
+            background: rgba(9, 14, 23, 0.7);
             border: 2px solid var(--border);
             transition: all 0.3s ease;
         }
         .protocol-step.active {
-            background: rgba(59, 130, 246, 0.15);
-            border-color: var(--accent-blue);
-            box-shadow: 0 0 20px rgba(59, 130, 246, 0.2);
+                background: rgba(107, 137, 198, 0.2);
+                border-color: rgba(107, 137, 198, 0.7);
+                box-shadow: 0 0 16px rgba(107, 137, 198, 0.25);
         }
         .protocol-step.completed {
-            background: rgba(34, 197, 94, 0.1);
-            border-color: rgba(34, 197, 94, 0.4);
+                background: rgba(107, 166, 138, 0.18);
+                border-color: rgba(107, 166, 138, 0.65);
         }
         .step-icon {
             width: 36px;
@@ -165,22 +169,17 @@
             justify-content: center;
             font-weight: 700;
             font-size: 0.875rem;
-            background: rgba(148, 163, 184, 0.2);
+            background: rgba(141, 150, 173, 0.25);
             color: var(--text-secondary);
             flex-shrink: 0;
         }
         .protocol-step.active .step-icon {
             background: var(--accent-blue);
             color: white;
-            animation: pulse 2s ease-in-out infinite;
         }
         .protocol-step.completed .step-icon {
             background: var(--accent-green);
             color: white;
-        }
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); opacity: 1; }
-            50% { transform: scale(1.05); opacity: 0.9; }
         }
         .step-content {
             flex: 1;
@@ -195,39 +194,45 @@
             font-size: 0.75rem;
             color: var(--text-secondary);
         }
-        .merkle-container {
-            position: relative;
+        .link-button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px 18px;
+            border-radius: 10px;
+            background: rgba(107, 137, 198, 0.12);
+            border: 1px solid rgba(107, 137, 198, 0.4);
+            color: #c3d4ff;
+            font-weight: 600;
+            text-decoration: none;
+            transition: background 0.2s ease, border-color 0.2s ease;
         }
-        #merkle-tree-canvas {
-            width: 100%;
-            background: rgba(2, 6, 23, 0.6);
-            border-radius: 8px;
-            border: 1px solid var(--border);
-            display: block;
-            min-height: 700px;
+        .link-button:hover {
+            background: rgba(107, 137, 198, 0.22);
+            border-color: rgba(107, 137, 198, 0.6);
         }
-        .merkle-controls {
+        .control-bar {
             display: flex;
             gap: 8px;
-            margin-top: 12px;
+            flex-wrap: wrap;
         }
-        .merkle-controls button {
+        .control-bar button {
             flex: 1;
             padding: 10px;
             border-radius: 8px;
             border: 1px solid var(--border);
-            background: rgba(15, 23, 42, 0.6);
+            background: rgba(10, 14, 22, 0.8);
             color: var(--text-primary);
             cursor: pointer;
             font-size: 0.875rem;
             font-weight: 500;
             transition: all 0.2s;
         }
-        .merkle-controls button:hover {
-            background: rgba(59, 130, 246, 0.2);
+        .control-bar button:hover {
+            background: rgba(107, 137, 198, 0.2);
             border-color: var(--accent-blue);
         }
-        .merkle-controls button:active {
+        .control-bar button:active {
             transform: scale(0.98);
         }
         .logs-container {
@@ -235,7 +240,7 @@
             overflow-y: auto;
         }
         .logs {
-            font-family: "JetBrains Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+            font-family: "IBM Plex Mono", "JetBrains Mono", monospace;
             font-size: 0.8125rem;
             line-height: 1.6;
             color: var(--text-secondary);
@@ -246,28 +251,31 @@
             border: 1px solid var(--border);
             margin: 0;
         }
-        .triad {
-            display: inline-block;
-            padding: 4px 10px;
-            border-radius: 6px;
-            background: rgba(148, 163, 184, 0.15);
-            margin: 2px;
-            font-family: "JetBrains Mono", monospace;
+        .triad-catalog {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .triad-summary {
+            display: flex;
+            justify-content: space-between;
             font-size: 0.8125rem;
+            color: var(--text-secondary);
         }
         .edge-chip {
             display: inline-block;
             padding: 4px 10px;
             margin: 2px;
             border-radius: 12px;
-            font-size: 0.75rem;
+            font-size: 0.72rem;
             font-weight: 600;
             text-transform: uppercase;
+            letter-spacing: 0.04em;
         }
-        .edge-chip[data-color="Red"] { background: rgba(239, 68, 68, 0.2); color: #fca5a5; }
-        .edge-chip[data-color="Green"] { background: rgba(34, 197, 94, 0.2); color: #86efac; }
-        .edge-chip[data-color="Yellow"] { background: rgba(234, 179, 8, 0.2); color: #fde047; }
-        .edge-chip[data-color="Blank"] { background: rgba(107, 114, 128, 0.2); color: #d1d5db; }
+        .edge-chip[data-color="Red"] { background: rgba(197, 132, 124, 0.25); color: #f0c7be; }
+        .edge-chip[data-color="Green"] { background: rgba(107, 166, 138, 0.2); color: #cfe5d8; }
+        .edge-chip[data-color="Yellow"] { background: rgba(212, 178, 106, 0.2); color: #f5e6c8; }
+        .edge-chip[data-color="Blank"] { background: rgba(122, 128, 146, 0.2); color: #cbd1de; }
         .focus-detail {
             font-size: 0.875rem;
         }
@@ -275,8 +283,8 @@
             display: inline-block;
             padding: 6px 12px;
             border-radius: 6px;
-            background: rgba(59, 130, 246, 0.15);
-            color: #93c5fd;
+            background: rgba(107, 137, 198, 0.2);
+            color: #c3d4ff;
             font-size: 0.75rem;
             font-weight: 600;
             text-transform: uppercase;
@@ -286,6 +294,90 @@
             color: var(--text-secondary);
             font-size: 0.8125rem;
             margin-bottom: 12px;
+        }
+        .spot-checks {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .spot-check {
+            display: flex;
+            gap: 12px;
+            padding: 12px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            background: rgba(6, 8, 14, 0.65);
+            align-items: center;
+        }
+        .spot-check.pass {
+            border-color: rgba(107, 166, 138, 0.6);
+            background: rgba(107, 166, 138, 0.12);
+        }
+        .spot-check.fail {
+            border-color: rgba(197, 132, 124, 0.7);
+            background: rgba(197, 132, 124, 0.12);
+        }
+        .spot-check.current {
+            border-color: rgba(107, 137, 198, 0.7);
+            background: linear-gradient(135deg, rgba(18, 24, 38, 0.92), rgba(44, 60, 92, 0.65));
+            box-shadow: 0 12px 24px rgba(4, 7, 13, 0.55);
+        }
+        .spot-check-status {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 1rem;
+            color: #04070d;
+            background: rgba(107, 137, 198, 0.2);
+            flex-shrink: 0;
+        }
+        .spot-check.pass .spot-check-status {
+            background: rgba(107, 166, 138, 0.85);
+            color: #0b2a1f;
+        }
+        .spot-check.fail .spot-check-status {
+            background: rgba(197, 132, 124, 0.85);
+            color: #3d1d1a;
+        }
+        .spot-check.current .spot-check-status {
+            background: rgba(107, 137, 198, 0.95);
+            color: #030712;
+        }
+        .spot-check-body {
+            flex: 1;
+        }
+        .spot-check-current-label {
+            font-size: 0.72rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: #dce6ff;
+            margin-bottom: 4px;
+        }
+        .spot-check-title {
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        .spot-check-rows {
+            font-family: "IBM Plex Mono", monospace;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+        .spot-check-rows span {
+            margin-right: 4px;
+        }
+        .spot-check-signature {
+            margin-top: 4px;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+        .muted {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
         }
         @media (max-width: 1400px) {
             .container {
@@ -327,6 +419,17 @@
                 <h2 class="card-title">Graph Information</h2>
                 <div id="graph-details" class="info-grid"></div>
             </div>
+
+            <div class="card">
+                <h2 class="card-title">Permissible Triads C&prime;</h2>
+                <div id="triad-catalog" class="triad-catalog">
+                    <div class="muted">Loading C&prime; summary...</div>
+                </div>
+                <p class="muted" style="margin-top: 6px;">
+                    The full catalog of admissible 3-node patterns now lives on its own page.
+                </p>
+                <a class="link-button" href="/triads">Open C&prime; Catalog</a>
+            </div>
             
             <div class="card">
                 <h2 class="card-title">Commitments</h2>
@@ -337,22 +440,25 @@
                 <h2 class="card-title">Challenge Details</h2>
                 <div id="focus-detail" class="focus-detail">Waiting for challenge...</div>
             </div>
-            
+
             <div class="card">
-                <h2 class="card-title">Merkle Tree Visualization</h2>
-                <div class="merkle-container">
-                    <canvas id="merkle-tree-canvas"></canvas>
-                    <div class="merkle-controls">
-                        <button id="play-traversal">▶ Play</button>
-                        <button id="reset-traversal">↺ Reset</button>
-                        <button id="step-traversal">⏭ Step</button>
-                    </div>
+                <h2 class="card-title">Spot Checks vs C&prime;</h2>
+                <div id="spot-checks" class="spot-checks">
+                    <div class="muted">Awaiting spot challenge...</div>
                 </div>
             </div>
             
             <div class="card">
+                <h2 class="card-title">Merkle Explorer</h2>
+                <p class="muted" style="margin-bottom: 12px;">
+                    The leaf and chunk traversal controls now live on their own focused page for easier reading.
+                </p>
+                <a class="link-button" href="/merkle">Open Merkle View</a>
+            </div>
+            
+            <div class="card">
                 <h2 class="card-title">Protocol Animation Controls</h2>
-                <div class="merkle-controls">
+                <div class="control-bar">
                     <button id="play-protocol">▶ Play Protocol</button>
                     <button id="pause-protocol">⏸ Pause</button>
                     <button id="step-protocol">⏭ Step</button>
@@ -376,42 +482,30 @@
     <script>
         const canvas = document.getElementById('graph-canvas');
         const ctx = canvas.getContext('2d');
-        const merkleCanvas = document.getElementById('merkle-tree-canvas');
-        const merkleCtx = merkleCanvas.getContext('2d');
         
         const palette = {
-            Red: '#ef4444',
-            Green: '#22c55e',
-            Yellow: '#eab308',
-            Blank: '#6b7280',
+            Red: '#c57b74',
+            Green: '#6ba68a',
+            Yellow: '#d4b26a',
+            Blank: '#7a8194',
         };
         
         const state = {
             latestSnapshot: null,
-            merkleTree: null,
-            traversalState: {
-                currentPathIndex: 0,
-                isPlaying: false,
-                animationId: null,
-            },
-            animationTime: 0,
             protocolStepState: {
                 currentStep: 0,
                 isPlaying: false,
                 animationId: null,
                 stepHistory: [],
             },
+            highlightedSpotKey: null,
         };
         
         function resizeCanvases() {
             const graphContainer = canvas.parentElement;
-            const merkleContainer = merkleCanvas.parentElement;
-            
             canvas.width = graphContainer.offsetWidth;
             canvas.height = Math.min(canvas.width, 800);
-            
-            merkleCanvas.width = merkleContainer.offsetWidth;
-            merkleCanvas.height = 800;
+
         }
         
         function project(x, y) {
@@ -419,6 +513,55 @@
             const px = ((x + 1.2) / bounds) * canvas.width;
             const py = ((1.2 - y) / bounds) * canvas.height;
             return [px, py];
+        }
+
+        function formatRoundLabel(roundIndex) {
+            if (typeof roundIndex !== 'number' || Number.isNaN(roundIndex)) {
+                return null;
+            }
+            return `#${String(roundIndex + 1).padStart(2, '0')}`;
+        }
+
+        function spotKey(entry) {
+            if (!entry) {
+                return null;
+            }
+            const nodes = Array.isArray(entry.nodes) ? entry.nodes.join('-') : '';
+            return `${entry.round_label || '??'}:${nodes}:${entry.signature || ''}`;
+        }
+
+        function getActiveSpot(snapshot) {
+            if (!snapshot) {
+                return null;
+            }
+            const entries = snapshot.spot_checks || [];
+            if (!entries.length) {
+                return null;
+            }
+
+            if (state.highlightedSpotKey) {
+                const match = entries.find(entry => spotKey(entry) === state.highlightedSpotKey);
+                if (match) {
+                    return match;
+                }
+                state.highlightedSpotKey = null;
+            }
+
+            const focusHasTriads = Array.isArray(snapshot.focus?.triads)
+                && snapshot.focus.triads.length > 0;
+            if (!focusHasTriads) {
+                return null;
+            }
+
+            const roundLabel = formatRoundLabel(snapshot.round?.round);
+            if (roundLabel) {
+                const currentRoundEntry = entries.find(entry => entry.round_label === roundLabel);
+                if (currentRoundEntry) {
+                    return currentRoundEntry;
+                }
+            }
+
+            return entries[0];
         }
         
         function getProtocolStep() {
@@ -462,329 +605,252 @@
             return state.protocolStepState.currentStep;
         }
         
-        function drawGraph(time) {
-            state.animationTime = time;
+        function drawGraph() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
+
             const snapshot = state.latestSnapshot;
             if (!snapshot?.graph?.layout?.nodes?.length) {
                 document.getElementById('canvas-caption').textContent = 'Waiting for graph data...';
                 return;
             }
-            
+
             const layout = snapshot.graph.layout;
             const focus = snapshot.focus || null;
             const round = snapshot.round || {};
-            const commitments = snapshot.commitments;
-            
+
             const focusEdges = new Set((focus?.edges || []).map(e => `${e.from}-${e.to}`));
             const focusNodes = new Set();
             (focus?.triads || []).forEach(triad => triad.forEach(idx => focusNodes.add(idx)));
-            
-            // Get current step (manual or automatic)
+
+            const nodeLookup = new Map();
+            layout.nodes.forEach(node => {
+                nodeLookup.set(node.idx, node);
+            });
+
+            const activeSpot = getActiveSpot(snapshot);
+            const activeNodes = new Set(activeSpot?.nodes || []);
+            const activeEdges = new Set();
+            if (activeSpot && focus?.edges) {
+                focus.edges.forEach(edge => {
+                    if (activeNodes.has(edge.from) && activeNodes.has(edge.to)) {
+                        activeEdges.add(`${edge.from}-${edge.to}`);
+                    }
+                });
+            }
+            const activeTriadKey = activeSpot
+                ? [...activeSpot.nodes].sort((a, b) => a - b).join('-')
+                : null;
+
+            const currentRoundNumber = typeof round.round === 'number' ? Number(round.round) + 1 : 1;
+            const roundLabelText = formatRoundLabel(round.round) || `#${String(currentRoundNumber).padStart(2, '0')}`;
+            const revealedEdges = focus?.edges?.length || 0;
+            const stepMap = {
+                1: {
+                    text: 'Step 1: Prover commits to permuted graph\nMerkle roots prepared for edges, permutation, and blank mask',
+                    color: '#6b89c6',
+                },
+                2: {
+                    text: `Step 2: Verifier issues challenge\nRound ${currentRoundNumber} – ${round.phase || 'challenge'}`,
+                    color: '#d4b26a',
+                },
+                3: {
+                    text: `Step 3: Prover opens requested data\n${revealedEdges} edges revealed with Merkle proofs`,
+                    color: '#6ba68a',
+                },
+                4: {
+                    text: 'Step 4: Verifier checks openings\nAll commitments confirmed for this round',
+                    color: '#6ba68a',
+                },
+            };
             const currentStep = getProtocolStep();
-            const isCommitPhase = currentStep === 1;
-            const isChallengePhase = currentStep === 2;
-            const isResponsePhase = currentStep === 3;
-            const isVerifyPhase = currentStep === 4;
-            
-            // Detailed step-by-step animation
-            let stepAnimation = 0;
-            let stepText = '';
-            let highlightColor = '#3b82f6';
-            
-            if (isCommitPhase) {
-                stepAnimation = Math.sin(time / 2000);
-                stepText = 'Step 1: Prover commits to permuted graph\nBuilding Merkle trees for edges, permutation, and blank bits';
-                highlightColor = '#3b82f6';
-            } else if (isChallengePhase) {
-                stepAnimation = Math.sin(time / 400);
-                const roundNum = round.round !== null ? Number(round.round) + 1 : 0;
-                stepText = `Step 2: Verifier generates challenge\nRound ${roundNum} - ${round.phase || 'challenge'} selected`;
-                highlightColor = '#eab308';
-            } else if (isResponsePhase) {
-                stepAnimation = Math.sin(time / 150);
-                stepText = `Step 3: Prover responds\nOpening ${focus?.edges?.length || 0} edges with Merkle proofs`;
-                highlightColor = '#22c55e';
-            } else if (isVerifyPhase) {
-                stepAnimation = Math.sin(time / 1000);
-                stepText = 'Step 4: Verifier validates\nAll proofs verified ✓';
-                highlightColor = '#22c55e';
-            }
-            
-            // Phase-based animation parameters
-            let edgePulse = 1;
-            let nodePulse = 1;
-            let globalOpacity = 1;
-            
-            if (isCommitPhase) {
-                edgePulse = 1 + 0.1 * Math.sin(time / 2000);
-                nodePulse = 1 + 0.1 * Math.sin(time / 2000);
-                globalOpacity = 0.4 + 0.3 * Math.sin(time / 2000);
-            } else if (isChallengePhase) {
-                edgePulse = 1 + 0.2 * Math.sin(time / 400);
-                nodePulse = 1 + 0.2 * Math.sin(time / 400);
-                globalOpacity = 0.5;
-            } else if (isResponsePhase) {
-                edgePulse = 1 + 0.4 * Math.sin(time / 150);
-                nodePulse = 1 + 0.4 * Math.sin(time / 150);
-                globalOpacity = 0.6;
-            } else if (isVerifyPhase) {
-                edgePulse = 1;
-                nodePulse = 1;
-                globalOpacity = 1;
-            }
-            
-            // Draw background overlay for current step
-            if (stepText) {
+            const stepInfo = stepMap[currentStep] || { text: '', color: '#6b89c6' };
+
+            if (stepInfo.text) {
                 ctx.save();
-                ctx.globalAlpha = 0.15 * (1 + stepAnimation * 0.3);
-                ctx.fillStyle = highlightColor;
+                ctx.globalAlpha = 0.08;
+                ctx.fillStyle = stepInfo.color;
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
                 ctx.restore();
             }
-            
-            // Draw edges with animated step-by-step highlighting
+
             layout.edges.forEach(edge => {
                 const [x1, y1] = project(edge.x1, edge.y1);
                 const [x2, y2] = project(edge.x2, edge.y2);
                 const key = `${edge.from}-${edge.to}`;
                 const isFocus = focusEdges.has(key);
-                
+                const isActive = activeEdges.has(key);
+
                 ctx.save();
-                
-                // Step-specific animated edge rendering
-                if (isCommitPhase) {
-                    // All edges fade in with wave animation during commit
-                    const wave = Math.sin(time / 1000 + (x1 + y1) * 0.01);
-                    ctx.globalAlpha = (0.4 + 0.3 * wave) * globalOpacity;
-                    ctx.lineWidth = 1.5 + 0.5 * wave;
-                } else if (isChallengePhase) {
-                    // Pulsing highlight on challenged triads' edges
-                    ctx.globalAlpha = isFocus ? 0.95 : 0.25;
-                    ctx.lineWidth = isFocus ? 4 * edgePulse : 1.5;
-                } else if (isResponsePhase) {
-                    // Bright animated highlight on edges being opened
-                    ctx.globalAlpha = isFocus ? 1 : 0.15;
-                    ctx.lineWidth = isFocus ? 5 * edgePulse : 1;
-                } else {
-                    ctx.globalAlpha = isFocus ? 1 : 0.5;
-                    ctx.lineWidth = isFocus ? 3 : 1.5;
+                if (isActive) {
+                    ctx.shadowColor = '#fcd34d';
+                    ctx.shadowBlur = 22;
                 }
-                
-                ctx.strokeStyle = palette[edge.color] || '#94a3b8';
-                
-                if (isFocus) {
-                    ctx.shadowBlur = 30 * edgePulse;
-                    ctx.shadowColor = palette[edge.color] || '#fff';
-                }
-                
+                ctx.globalAlpha = isActive ? 1 : isFocus ? 0.85 : 0.28;
+                ctx.lineWidth = isActive ? 4 : isFocus ? 2.2 : 1;
+                ctx.strokeStyle = isActive ? '#f8e45c' : (palette[edge.color] || '#94a3b8');
                 ctx.beginPath();
                 ctx.moveTo(x1, y1);
                 ctx.lineTo(x2, y2);
                 ctx.stroke();
-                
-                // Add animated glow trail for focus edges
-                if (isFocus && (isChallengePhase || isResponsePhase)) {
-                    ctx.globalAlpha = 0.3 * Math.abs(stepAnimation);
-                    ctx.lineWidth = 8 * edgePulse;
-                    ctx.stroke();
-                }
-                
                 ctx.restore();
             });
-            
-            // Draw nodes with animated step-by-step highlighting
+
+            if (focus?.edges?.length) {
+                focus.edges.forEach(edge => {
+                    const key = `${edge.from}-${edge.to}`;
+                    const fromNode = nodeLookup.get(edge.from);
+                    const toNode = nodeLookup.get(edge.to);
+                    if (!fromNode || !toNode) {
+                        return;
+                    }
+                    const [x1, y1] = project(fromNode.x, fromNode.y);
+                    const [x2, y2] = project(toNode.x, toNode.y);
+                    const isActive = activeEdges.has(key);
+                    ctx.save();
+                    ctx.shadowColor = isActive ? '#fcd34d' : '#b4c6fc';
+                    ctx.shadowBlur = isActive ? 26 : 10;
+                    ctx.globalAlpha = isActive ? 1 : 0.85;
+                    ctx.lineWidth = isActive ? 4.2 : 2.4;
+                    ctx.strokeStyle = isActive
+                        ? '#fef08a'
+                        : (palette[edge.color] || 'rgba(148, 163, 184, 0.85)');
+                    ctx.beginPath();
+                    ctx.moveTo(x1, y1);
+                    ctx.lineTo(x2, y2);
+                    ctx.stroke();
+                    ctx.restore();
+                });
+            }
+
             layout.nodes.forEach(node => {
                 const [x, y] = project(node.x, node.y);
                 const isFocus = focusNodes.has(node.idx);
-                
-                let radius = 10;
-                let nodeColor = '#e2e8f0';
-                let pulseEffect = 1;
-                
-                if (isCommitPhase) {
-                    // Gentle pulsing during commit
-                    pulseEffect = 1 + 0.15 * Math.sin(time / 2000 + node.idx * 0.5);
-                    radius = (10 + 2 * Math.sin(time / 2000)) * pulseEffect;
-                    nodeColor = '#94a3b8';
-                } else if (isChallengePhase) {
-                    // Strong pulsing for challenged nodes
-                    pulseEffect = isFocus ? nodePulse : 1;
-                    radius = isFocus ? 16 * pulseEffect : 10;
-                    nodeColor = isFocus ? '#eab308' : '#cbd5e1';
-                } else if (isResponsePhase) {
-                    // Intense pulsing for nodes in response
-                    pulseEffect = isFocus ? nodePulse : 0.8;
-                    radius = isFocus ? 18 * pulseEffect : 8;
-                    nodeColor = isFocus ? '#22c55e' : '#64748b';
-                } else {
-                    radius = isFocus ? 14 : 10;
-                    nodeColor = isFocus ? '#67e8f9' : '#e2e8f0';
-                }
-                
+                const isActive = activeNodes.has(node.idx);
+                const radius = isActive ? 16 : isFocus ? 13 : 9;
+                const nodeColor = isActive ? '#fdf18f' : isFocus ? stepInfo.color : '#c7d0e2';
+
                 ctx.save();
-                ctx.globalAlpha = isFocus ? 1 : globalOpacity;
-                
-                // Animated outer glow ring
-                if (isFocus && (isChallengePhase || isResponsePhase)) {
-                    ctx.globalAlpha = 0.4 * Math.abs(stepAnimation);
-                    ctx.strokeStyle = nodeColor;
-                    ctx.lineWidth = 6 * pulseEffect;
-                    ctx.beginPath();
-                    ctx.arc(x, y, radius + 8, 0, Math.PI * 2);
-                    ctx.stroke();
-                }
-                
-                // Node circle
                 ctx.beginPath();
                 ctx.arc(x, y, radius, 0, Math.PI * 2);
-                ctx.fillStyle = '#020617';
+                ctx.fillStyle = '#05070d';
                 ctx.fill();
-                ctx.strokeStyle = nodeColor;
-                ctx.lineWidth = isFocus ? 4 : 2;
-                ctx.globalAlpha = isFocus ? 1 : globalOpacity;
-                ctx.stroke();
-                
-                if (isFocus) {
-                    ctx.shadowBlur = 35 * pulseEffect;
-                    ctx.shadowColor = nodeColor;
-                    ctx.stroke();
+                if (isActive) {
+                    ctx.shadowColor = '#fcd34d';
+                    ctx.shadowBlur = 30;
                 }
-                
-                // Node label with animation
-                ctx.fillStyle = isFocus ? nodeColor : '#f1f5f9';
-                ctx.font = `bold ${isFocus ? 16 : 12}px "Inter", sans-serif`;
+                ctx.strokeStyle = nodeColor;
+                ctx.lineWidth = isActive ? 3.6 : isFocus ? 2.2 : 1.2;
+                ctx.globalAlpha = isActive ? 1 : isFocus ? 0.95 : 0.9;
+                ctx.stroke();
+
+                ctx.fillStyle = '#e3e8f4';
+                ctx.font = `600 ${isActive ? 17 : isFocus ? 15 : 11}px "Space Grotesk", sans-serif`;
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
                 ctx.globalAlpha = 1;
                 ctx.fillText(node.idx, x, y);
                 ctx.restore();
             });
-            
-             // Draw animated step indicator in top left corner
-             if (stepText) {
-                 ctx.save();
-                 
-                 // Animated background box (smaller, top left)
-                 const boxPadding = 12;
-                 const boxWidth = 320;
-                 const boxHeight = 70;
-                 const boxX = 15;
-                 const boxY = 15;
-                 const pulseAlpha = 0.15 + 0.1 * Math.abs(stepAnimation);
-                 
-                 // Rounded rectangle background
-                 ctx.globalAlpha = pulseAlpha;
-                 ctx.fillStyle = highlightColor;
-                 ctx.beginPath();
-                 ctx.roundRect(boxX, boxY, boxWidth, boxHeight, 10);
-                 ctx.fill();
-                 
-                 // Border
-                 ctx.globalAlpha = 0.8;
-                 ctx.strokeStyle = highlightColor;
-                 ctx.lineWidth = 2;
-                 ctx.stroke();
-                 
-                 // Step number badge (smaller)
-                 const stepNum = isCommitPhase ? '1' : isChallengePhase ? '2' : isResponsePhase ? '3' : '4';
-                 const badgeSize = 36;
-                 const badgeX = boxX + boxPadding + badgeSize / 2;
-                 const badgeY = boxY + boxHeight / 2;
-                 
-                 ctx.globalAlpha = 0.9;
-                 ctx.fillStyle = highlightColor;
-                 ctx.beginPath();
-                 ctx.arc(badgeX, badgeY, badgeSize / 2, 0, Math.PI * 2);
-                 ctx.fill();
-                 ctx.strokeStyle = '#fff';
-                 ctx.lineWidth = 2;
-                 ctx.stroke();
-                 
-                 ctx.fillStyle = '#fff';
-                 ctx.font = 'bold 20px "Inter", sans-serif';
-                 ctx.textAlign = 'center';
-                 ctx.textBaseline = 'middle';
-                 ctx.fillText(stepNum, badgeX, badgeY);
-                 
-                 // Step text with animation (smaller font)
-                 ctx.globalAlpha = 0.95;
-                 ctx.fillStyle = '#fff';
-                 ctx.font = 'bold 15px "Inter", sans-serif';
-                 ctx.textAlign = 'left';
-                 
-                 const lines = stepText.split('\n');
-                 const lineHeight = 20;
-                 const textStartX = boxX + boxPadding + badgeSize + 12;
-                 const textStartY = boxY + 22;
-                 
-                 lines.forEach((line, idx) => {
-                     ctx.fillText(line, textStartX, textStartY + idx * lineHeight);
-                 });
-                 
-                 // Animated progress bar (smaller)
-                 if (isCommitPhase || isChallengePhase || isResponsePhase) {
-                     const progressWidth = boxWidth - boxPadding * 2 - badgeSize - 12;
-                     const progressHeight = 3;
-                     const progressX = textStartX;
-                     const progressY = boxY + boxHeight - 12;
-                     
-                     ctx.globalAlpha = 0.4;
-                     ctx.fillStyle = '#64748b';
-                     ctx.fillRect(progressX, progressY, progressWidth, progressHeight);
-                     
-                     ctx.globalAlpha = 0.9;
-                     ctx.fillStyle = highlightColor;
-                     const progress = 0.5 + 0.5 * Math.abs(stepAnimation);
-                     ctx.fillRect(progressX, progressY, progressWidth * progress, progressHeight);
-                 }
-                 
-                 ctx.restore();
-             }
-            
-            // Draw animated triad connections during challenge/response
-            if (isChallengePhase || isResponsePhase) {
-                (focus?.triads || []).forEach((triad, triadIdx) => {
-                    if (triad.length === 3) {
-                        const nodes = triad.map(idx => layout.nodes.find(n => n.idx === idx)).filter(Boolean);
-                        if (nodes.length === 3) {
-                            ctx.save();
-                            
-                            // Animated dash pattern
-                            const dashOffset = (time / 50 + triadIdx * 20) % 20;
-                            ctx.setLineDash([8, 4]);
-                            ctx.lineDashOffset = -dashOffset;
-                            
-                            // Pulsing triangle
-                            const triangleAlpha = 0.4 + 0.3 * Math.abs(stepAnimation);
-                            ctx.globalAlpha = triangleAlpha;
-                            ctx.strokeStyle = highlightColor;
-                            ctx.lineWidth = 3 + 2 * Math.abs(stepAnimation);
-                            
-                            ctx.beginPath();
-                            const [x1, y1] = project(nodes[0].x, nodes[0].y);
-                            ctx.moveTo(x1, y1);
-                            nodes.slice(1).forEach(node => {
-                                const [x, y] = project(node.x, node.y);
-                                ctx.lineTo(x, y);
-                            });
-                            ctx.closePath();
-                            ctx.stroke();
-                            
-                            // Fill with low opacity
-                            ctx.globalAlpha = 0.1 * triangleAlpha;
-                            ctx.fillStyle = highlightColor;
-                            ctx.fill();
-                            
-                            ctx.setLineDash([]);
-                            ctx.restore();
-                        }
-                    }
+
+            if (focus && (focus.triads || []).length) {
+                (focus.triads || []).forEach(triad => {
+                    if (triad.length !== 3) return;
+                    const nodes = triad
+                        .map(idx => nodeLookup.get(idx))
+                        .filter(Boolean);
+                    if (nodes.length !== 3) return;
+                    const triadKey = [...triad].sort((a, b) => a - b).join('-');
+                    const isActiveTriad = activeTriadKey && triadKey === activeTriadKey;
+
+                    ctx.save();
+                    ctx.setLineDash(isActiveTriad ? [10, 4] : [6, 4]);
+                    ctx.globalAlpha = isActiveTriad ? 0.55 : 0.25;
+                    ctx.strokeStyle = isActiveTriad ? '#f8e45c' : stepInfo.color;
+                    ctx.lineWidth = isActiveTriad ? 3 : 2;
+                    ctx.beginPath();
+                    const [startX, startY] = project(nodes[0].x, nodes[0].y);
+                    ctx.moveTo(startX, startY);
+                    nodes.slice(1).forEach(node => {
+                        const [nx, ny] = project(node.x, node.y);
+                        ctx.lineTo(nx, ny);
+                    });
+                    ctx.closePath();
+                    ctx.stroke();
+                    ctx.globalAlpha = isActiveTriad ? 0.2 : 0.08;
+                    ctx.fillStyle = isActiveTriad ? 'rgba(248, 228, 92, 0.35)' : stepInfo.color;
+                    ctx.fill();
+                    ctx.setLineDash([]);
+                    ctx.restore();
                 });
             }
-            
-            document.getElementById('canvas-caption').textContent = `Showing ${layout.visualized} nodes`;
+
+            if (activeSpot) {
+                ctx.save();
+                const boxWidth = 320;
+                const boxHeight = 96;
+                const boxX = canvas.width - boxWidth - 22;
+                const boxY = canvas.height - boxHeight - 22;
+                ctx.globalAlpha = 0.95;
+                ctx.fillStyle = 'rgba(5, 7, 13, 0.9)';
+                ctx.beginPath();
+                ctx.roundRect(boxX, boxY, boxWidth, boxHeight, 12);
+                ctx.fill();
+                ctx.strokeStyle = '#f8e45c';
+                ctx.lineWidth = 1.2;
+                ctx.stroke();
+
+                ctx.fillStyle = '#fef3c7';
+                ctx.font = '600 14px "Space Grotesk", sans-serif';
+                ctx.textAlign = 'left';
+                ctx.textBaseline = 'top';
+                ctx.fillText(`Spot ${activeSpot.round_label} · Nodes [${activeSpot.nodes.join(', ')}]`, boxX + 16, boxY + 16);
+
+                ctx.fillStyle = '#cbd5f5';
+                ctx.font = '12px "IBM Plex Mono", monospace';
+                const rowText = (activeSpot.rows || []).join('   ');
+                ctx.fillText(rowText, boxX + 16, boxY + 40);
+                const signature = activeSpot.signature ? `Signature ${activeSpot.signature}` : '';
+                if (signature) {
+                    ctx.fillText(signature, boxX + 16, boxY + 60);
+                }
+                ctx.restore();
+            }
+
+            if (stepInfo.text) {
+                ctx.save();
+                const boxWidth = 340;
+                const boxHeight = 76;
+                const boxX = 18;
+                const boxY = 18;
+                ctx.globalAlpha = 0.92;
+                ctx.fillStyle = 'rgba(5, 7, 13, 0.78)';
+                ctx.beginPath();
+                ctx.roundRect(boxX, boxY, boxWidth, boxHeight, 12);
+                ctx.fill();
+                ctx.strokeStyle = stepInfo.color;
+                ctx.lineWidth = 1;
+                ctx.stroke();
+
+                ctx.fillStyle = '#f8fafc';
+                ctx.font = '600 14px "Space Grotesk", sans-serif';
+                ctx.textAlign = 'left';
+                ctx.textBaseline = 'top';
+                const lines = stepInfo.text.split('\n');
+                const lineHeight = 18;
+                lines.forEach((line, idx) => {
+                    ctx.fillText(line, boxX + 16, boxY + 14 + idx * lineHeight);
+                });
+                ctx.restore();
+            }
+
+            const captionEl = document.getElementById('canvas-caption');
+            if (activeSpot) {
+                captionEl.textContent = `Round ${roundLabelText}: verifying spot [${activeSpot.nodes.join(', ')}]`;
+            } else if (focus?.triads?.length) {
+                captionEl.textContent = `Showing ${layout.visualized} nodes · ${focus.triads.length} triads under inspection`;
+            } else {
+                captionEl.textContent = `Showing ${layout.visualized} nodes`;
+            }
         }
         
         function renderGraphInfo(snapshot) {
@@ -807,6 +873,27 @@
                     <span class="info-label">Samples</span>
                     <span class="info-value">${g.sample_edges.length}</span>
                 </div>
+            `;
+        }
+
+        function renderTriadCatalog(snapshot) {
+            const catalog = snapshot.triads;
+            const container = document.getElementById('triad-catalog');
+            if (!catalog || !catalog.patterns || catalog.patterns.length === 0) {
+                container.innerHTML = '<div class="muted">Triad catalog unavailable.</div>';
+                return;
+            }
+            const preview = catalog.patterns.slice(0, 3).map(pattern => {
+                const label = pattern.id.toString().padStart(2, '0');
+                return `#${label}:${pattern.signature}`;
+            }).join('  ·  ');
+
+            container.innerHTML = `
+                <div class="triad-summary">
+                    <span>|C&prime;| = ${catalog.total.toLocaleString()}</span>
+                    <span>${catalog.patterns.length} canonical patterns</span>
+                </div>
+                <div class="muted">Preview: ${preview || 'unavailable'} · visit the catalog for the full set.</div>
             `;
         }
         
@@ -854,6 +941,50 @@
                 ${triads ? `<div style="margin-top: 8px;">${triads}</div>` : ''}
                 ${edges ? `<div style="margin-top: 8px;">${edges}</div>` : ''}
             `;
+        }
+
+        function renderSpotChecks(snapshot) {
+            const container = document.getElementById('spot-checks');
+            const entries = snapshot.spot_checks || [];
+            if (!entries.length) {
+                state.highlightedSpotKey = null;
+                container.innerHTML = '<div class="muted">No spot checks yet.</div>';
+                return;
+            }
+
+            const activeSpot = getActiveSpot(snapshot);
+            const activeKey = spotKey(activeSpot);
+
+            container.innerHTML = entries
+                .map(entry => {
+                    const rows = (entry.rows || [])
+                        .map(row => `<span>${row.replace(/ /g, '&nbsp;')}</span>`)
+                        .join('<span>|</span>');
+                    const statusLabel = entry.in_set ? 'Matches C&prime;' : 'Rejected by C&prime;';
+                    const entryKey = spotKey(entry);
+                    const encodedKey = encodeURIComponent(entryKey || '');
+                    const isCurrent = activeKey && entryKey === activeKey;
+                    const classes = ['spot-check', entry.in_set ? 'pass' : 'fail'];
+                    if (isCurrent) {
+                        classes.push('current');
+                    }
+                    const labelPrefix = state.highlightedSpotKey ? 'Selected spot' : 'Live spot';
+                    const activeLabel = isCurrent
+                        ? `<div class="spot-check-current-label">${labelPrefix} · ${entry.round_label}</div>`
+                        : '';
+                    return `
+                        <div class="${classes.join(' ')}" data-spot-key="${encodedKey}">
+                            <div class="spot-check-status">${entry.in_set ? '✓' : '✗'}</div>
+                            <div class="spot-check-body">
+                                ${activeLabel}
+                                <div class="spot-check-title">${entry.round_label} · [${entry.nodes.join(', ')}]</div>
+                                <div class="spot-check-rows">${rows}</div>
+                                <div class="spot-check-signature">${statusLabel} · ${entry.signature}</div>
+                            </div>
+                        </div>
+                    `;
+                })
+                .join('');
         }
         
         function updateProtocolSteps(snapshot) {
@@ -910,199 +1041,6 @@
             }).join('');
         }
         
-        function buildMerkleTree(merkle) {
-            if (!merkle) return null;
-            
-            const buildTree = (path, treeType) => {
-                if (!path || path.length === 0) return null;
-                
-                const levels = [];
-                const numLevels = path.length;
-                
-                // Build tree from leaves (level 0) to root (last level)
-                // Each level has 2^(numLevels - 1 - levelIdx) nodes
-                for (let levelIdx = 0; levelIdx < numLevels; levelIdx++) {
-                    const nodesInLevel = Math.pow(2, numLevels - 1 - levelIdx);
-                    const levelNodes = [];
-                    
-                    // Calculate which nodes are on the proof path
-                    // Path starts at leaf index, then goes up the tree
-                    const leafIndex = 0; // Assuming we're proving leaf 0
-                    let currentPathIndex = leafIndex;
-                    
-                    for (let i = 0; i < levelIdx; i++) {
-                        currentPathIndex = Math.floor(currentPathIndex / 2);
-                    }
-                    
-                    for (let nodeIdx = 0; nodeIdx < nodesInLevel; nodeIdx++) {
-                        // Node is on path if it's the path node or its sibling
-                        const isPathNode = nodeIdx === currentPathIndex;
-                        const siblingIndex = currentPathIndex % 2 === 0 ? currentPathIndex + 1 : currentPathIndex - 1;
-                        const isSibling = nodeIdx === siblingIndex && siblingIndex < nodesInLevel;
-                        const isOnPath = isPathNode || isSibling;
-                        
-                        let label = '';
-                        if (levelIdx === 0) {
-                            label = treeType === 'leaf' ? 'Edge' : 'Chunk';
-                        } else if (levelIdx === numLevels - 1) {
-                            label = 'Root';
-                        } else {
-                            label = `L${levelIdx}`;
-                        }
-                        
-                        levelNodes.push({
-                            hash: isOnPath && path[levelIdx] ? path[levelIdx].hash : null,
-                            isPath: isOnPath,
-                            index: nodeIdx,
-                            label: isOnPath ? label : '',
-                        });
-                    }
-                    
-                    levels.push(levelNodes);
-                }
-                
-                return { levels, path, treeType };
-            };
-            
-            return {
-                leaf: buildTree(merkle.leaf_path || [], 'leaf'),
-                chunk: buildTree(merkle.chunk_path || [], 'chunk'),
-            };
-        }
-        
-        function drawMerkleTree(tree, traversalIndex = 0) {
-            if (!tree || !merkleCtx) return;
-            
-            merkleCtx.clearRect(0, 0, merkleCanvas.width, merkleCanvas.height);
-            
-            const nodeRadius = 16;
-            const levelHeight = 100;
-            const padding = 40;
-            const startY = 60;
-            const labelOffset = 25;
-            
-            const drawTree = (treeData, startX, width, treeLabel) => {
-                if (!treeData || !treeData.levels) return;
-                
-                const levels = treeData.levels;
-                const maxLevel = levels.length - 1;
-                const centerX = startX + width / 2;
-                
-                // Draw tree title
-                merkleCtx.fillStyle = '#94a3b8';
-                merkleCtx.font = 'bold 18px sans-serif';
-                merkleCtx.textAlign = 'center';
-                merkleCtx.fillText(treeLabel, centerX, startY - 35);
-                
-                // Calculate total height needed and adjust canvas
-                const totalHeight = (maxLevel + 1) * levelHeight + 100;
-                if (totalHeight > merkleCanvas.height) {
-                    merkleCanvas.height = Math.max(totalHeight, 800);
-                }
-                
-                levels.forEach((level, levelIdx) => {
-                    const y = startY + levelIdx * levelHeight;
-                    const numNodes = level.length;
-                    const availableWidth = width - padding * 2;
-                    
-                    // Reduced spacing for leaves, adaptive for other levels
-                    let nodeSpacing;
-                    if (levelIdx === 0) {
-                        // Leaves: reduced spacing (40px minimum) for better fit
-                        nodeSpacing = Math.max(40, availableWidth / Math.max(numNodes - 1, 1));
-                    } else {
-                        // Other levels: adaptive spacing
-                        nodeSpacing = numNodes > 1 ? Math.max(50, Math.min(availableWidth / (numNodes - 1), 120)) : 0;
-                    }
-                    
-                    const levelStartX = centerX - (numNodes - 1) * nodeSpacing / 2;
-                    
-                    // Clear, bold level label
-                    merkleCtx.fillStyle = '#cbd5e1';
-                    merkleCtx.font = 'bold 14px sans-serif';
-                    merkleCtx.textAlign = 'left';
-                    const levelName = levelIdx === 0 ? 'Leaves' : levelIdx === maxLevel ? 'Root' : `Level ${levelIdx}`;
-                    merkleCtx.fillText(levelName, startX + 15, y - 12);
-                    
-                    level.forEach((node, nodeIdx) => {
-                        const x = levelStartX + nodeIdx * nodeSpacing;
-                        const isActive = levelIdx <= traversalIndex && node.isPath;
-                        const isCurrent = levelIdx === traversalIndex && node.isPath;
-                        const isTraversed = levelIdx < traversalIndex && node.isPath;
-                        
-                        // Draw connection to parent
-                        if (levelIdx > 0 && node.isPath) {
-                            const parentLevel = levels[levelIdx - 1];
-                            const parentIdx = Math.floor(nodeIdx / 2);
-                            if (parentLevel[parentIdx]?.isPath) {
-                                const parentX = levelStartX + parentIdx * nodeSpacing;
-                                const parentY = y - levelHeight;
-                                
-                                merkleCtx.beginPath();
-                                merkleCtx.moveTo(x, y - nodeRadius);
-                                merkleCtx.lineTo(parentX, parentY + nodeRadius);
-                                merkleCtx.strokeStyle = isTraversed ? '#22c55e' : isActive ? '#3b82f6' : 'rgba(148, 163, 184, 0.3)';
-                                merkleCtx.lineWidth = isCurrent ? 3 : isActive ? 2 : 1;
-                                merkleCtx.stroke();
-                            }
-                        }
-                        
-                        // Draw node
-                        merkleCtx.beginPath();
-                        merkleCtx.arc(x, y, nodeRadius, 0, Math.PI * 2);
-                        merkleCtx.fillStyle = isCurrent ? '#fcd34d' : isTraversed ? '#22c55e' : isActive ? '#3b82f6' : node.isPath ? 'rgba(34, 197, 94, 0.4)' : 'rgba(148, 163, 184, 0.15)';
-                        merkleCtx.fill();
-                        merkleCtx.strokeStyle = isCurrent ? '#fbbf24' : isActive ? '#60a5fa' : 'rgba(148, 163, 184, 0.5)';
-                        merkleCtx.lineWidth = isCurrent ? 3 : isActive ? 2 : 1;
-                        merkleCtx.stroke();
-                        
-                        // Draw user-friendly label (instead of long hash)
-                        if (node.isPath) {
-                            // Draw descriptive label with better spacing
-                            if (node.label) {
-                                merkleCtx.fillStyle = isCurrent ? '#fcd34d' : isActive ? '#93c5fd' : '#94a3b8';
-                                merkleCtx.font = 'bold 11px sans-serif';
-                                merkleCtx.textAlign = 'center';
-                                merkleCtx.fillText(node.label, x, y + nodeRadius + 18);
-                                
-                                // Draw short hash below label only if space allows and not too many nodes
-                                if (node.hash && levelIdx < maxLevel - 1 && numNodes <= 8) {
-                                    merkleCtx.fillStyle = '#64748b';
-                                    merkleCtx.font = '9px "JetBrains Mono", monospace';
-                                    const shortHash = `${node.hash.slice(0, 5)}...${node.hash.slice(-3)}`;
-                                    merkleCtx.fillText(shortHash, x, y + nodeRadius + 32);
-                                }
-                            } else if (node.hash) {
-                                // Fallback: show short hash if no label
-                                merkleCtx.fillStyle = isCurrent ? '#fcd34d' : isActive ? '#93c5fd' : '#94a3b8';
-                                merkleCtx.font = '10px "JetBrains Mono", monospace';
-                                merkleCtx.textAlign = 'center';
-                                const shortHash = `${node.hash.slice(0, 5)}...${node.hash.slice(-3)}`;
-                                merkleCtx.fillText(shortHash, x, y + nodeRadius + 18);
-                            }
-                        }
-                    });
-                });
-            };
-            
-            const halfWidth = merkleCanvas.width / 2;
-            if (tree.leaf) drawTree(tree.leaf, padding, halfWidth - padding * 1.5, 'Leaf Proof Tree');
-            if (tree.chunk) drawTree(tree.chunk, halfWidth + padding / 2, halfWidth - padding * 1.5, 'Chunk Proof Tree');
-        }
-        
-        function renderMerkle(snapshot) {
-            const merkle = snapshot.merkle;
-            if (!merkle) {
-                if (merkleCtx) merkleCtx.clearRect(0, 0, merkleCanvas.width, merkleCanvas.height);
-                return;
-            }
-            
-            state.merkleTree = buildMerkleTree(merkle);
-            if (state.merkleTree) {
-                drawMerkleTree(state.merkleTree, state.traversalState.currentPathIndex);
-            }
-        }
-        
         function renderLogs(snapshot) {
             const logFeed = document.getElementById('log-feed');
             const logs = snapshot.logs || [];
@@ -1119,10 +1057,11 @@
         function renderSnapshot(snapshot) {
             state.latestSnapshot = snapshot;
             renderGraphInfo(snapshot);
+            renderTriadCatalog(snapshot);
             renderCommitments(snapshot);
             renderFocus(snapshot);
+            renderSpotChecks(snapshot);
             updateProtocolSteps(snapshot);
-            renderMerkle(snapshot);
             renderLogs(snapshot);
             
             const round = snapshot.round || {};
@@ -1135,26 +1074,6 @@
             }
         }
         
-        function animateTraversal() {
-            if (!state.merkleTree) return;
-            
-            const maxPath = Math.max(
-                state.latestSnapshot?.merkle?.leaf_path?.length || 0,
-                state.latestSnapshot?.merkle?.chunk_path?.length || 0
-            );
-            
-            if (state.traversalState.currentPathIndex < maxPath - 1) {
-                state.traversalState.currentPathIndex++;
-                drawMerkleTree(state.merkleTree, state.traversalState.currentPathIndex);
-            } else {
-                state.traversalState.isPlaying = false;
-                if (state.traversalState.animationId) {
-                    clearInterval(state.traversalState.animationId);
-                    state.traversalState.animationId = null;
-                }
-                document.getElementById('play-traversal').textContent = '▶ Play';
-            }
-        }
         
         function animateProtocolStep() {
             if (!state.latestSnapshot) return;
@@ -1178,37 +1097,6 @@
         }
         
         function setupControls() {
-            // Merkle tree controls
-            document.getElementById('play-traversal').addEventListener('click', function() {
-                if (state.traversalState.isPlaying) {
-                    state.traversalState.isPlaying = false;
-                    if (state.traversalState.animationId) {
-                        clearInterval(state.traversalState.animationId);
-                        state.traversalState.animationId = null;
-                    }
-                    this.textContent = '▶ Play';
-                } else {
-                    state.traversalState.isPlaying = true;
-                    this.textContent = '⏸ Pause';
-                    state.traversalState.animationId = setInterval(animateTraversal, 700);
-                }
-            });
-            
-            document.getElementById('reset-traversal').addEventListener('click', () => {
-                state.traversalState.currentPathIndex = 0;
-                state.traversalState.isPlaying = false;
-                if (state.traversalState.animationId) {
-                    clearInterval(state.traversalState.animationId);
-                    state.traversalState.animationId = null;
-                }
-                document.getElementById('play-traversal').textContent = '▶ Play';
-                if (state.merkleTree) {
-                    drawMerkleTree(state.merkleTree, 0);
-                }
-            });
-            
-            document.getElementById('step-traversal').addEventListener('click', animateTraversal);
-            
             // Protocol step controls
             document.getElementById('play-protocol').addEventListener('click', function() {
                 if (state.protocolStepState.isPlaying) {
@@ -1262,6 +1150,41 @@
                 updateProtocolStepDisplay();
             });
         }
+
+        function setupSpotCheckHover() {
+            const container = document.getElementById('spot-checks');
+            if (!container) {
+                return;
+            }
+
+            container.addEventListener('mouseover', event => {
+                const origin = event.target instanceof Element ? event.target : null;
+                const card = origin?.closest('.spot-check');
+                if (!card) {
+                    return;
+                }
+                const keyAttr = card.getAttribute('data-spot-key');
+                const decodedKey = keyAttr ? decodeURIComponent(keyAttr) : null;
+                if (decodedKey && state.highlightedSpotKey !== decodedKey) {
+                    state.highlightedSpotKey = decodedKey;
+                    if (state.latestSnapshot) {
+                        renderSpotChecks(state.latestSnapshot);
+                    }
+                }
+            });
+
+            container.addEventListener('mouseleave', event => {
+                if (container.contains(event.relatedTarget)) {
+                    return;
+                }
+                if (state.highlightedSpotKey !== null) {
+                    state.highlightedSpotKey = null;
+                    if (state.latestSnapshot) {
+                        renderSpotChecks(state.latestSnapshot);
+                    }
+                }
+            });
+        }
         
          // Add roundRect polyfill for older browsers
          if (!CanvasRenderingContext2D.prototype.roundRect) {
@@ -1291,13 +1214,14 @@
              }
          }
          
-         function animationLoop(time) {
-             drawGraph(time);
+         function animationLoop() {
+             drawGraph();
              requestAnimationFrame(animationLoop);
          }
         
         resizeCanvases();
         setupControls();
+        setupSpotCheckHover();
         updateProtocolStepDisplay();
         refresh();
         setInterval(refresh, 500);
@@ -1305,9 +1229,6 @@
         
         window.addEventListener('resize', () => {
             resizeCanvases();
-            if (state.merkleTree) {
-                drawMerkleTree(state.merkleTree, state.traversalState.currentPathIndex);
-            }
         });
     </script>
 </body>

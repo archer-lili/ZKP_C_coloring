@@ -1,7 +1,7 @@
 use crate::crypto::merkle::ChunkedMerkleProof;
-use crate::graph::{Color, Graph};
+use crate::graph::{Color, ColorationSet, Graph, Spot};
 use crate::protocol::{
-    messages::{BlankChallengeResponse, Commitments, SpotChallengeResponse},
+    messages::{BlankChallengeResponse, Commitments, SpotChallengeResponse, SpotResponse},
     verifier::VerifierConfig,
 };
 use crate::stark::prover::StarkParameters;
@@ -25,12 +25,12 @@ use ratatui::{
     text::{Line, Span},
     widgets::{
         canvas::{Canvas, Context, Line as CanvasLine, Points},
-        Block, Borders, Paragraph, Widget,
+        Block, Borders, Paragraph, Widget, Wrap,
     },
     Terminal,
 };
 use serde::Serialize;
-use std::collections::{HashSet, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::f64::consts::PI;
 use std::io::{self, Stdout};
 use std::net::SocketAddr;
@@ -40,7 +40,11 @@ use std::time::Duration;
 use tokio::{net::TcpListener, runtime::Runtime, sync::oneshot};
 
 const LOG_LIMIT: usize = 64;
+const SPOT_HISTORY_LIMIT: usize = 15;
+const TRIAD_COLUMNS: usize = 4;
 const WEB_INDEX_HTML: &str = include_str!("web/index.html");
+const WEB_MERKLE_HTML: &str = include_str!("web/merkle.html");
+const WEB_TRIADS_HTML: &str = include_str!("web/triads.html");
 
 #[derive(Clone, Debug, Serialize)]
 pub struct GraphSummary {
@@ -51,6 +55,27 @@ pub struct GraphSummary {
     pub sample_edges: Vec<String>,
     pub layout: GraphLayout,
     pub color_set_size: usize,
+}
+
+#[derive(Clone, Debug, Serialize, Default)]
+pub struct TriadCatalog {
+    pub total: usize,
+    pub patterns: Vec<TriadPatternView>,
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct TriadPatternView {
+    pub id: usize,
+    pub signature: String,
+    pub rows: [String; 3],
+    pub edges: Vec<TriadEdgeView>,
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct TriadEdgeView {
+    pub from: u32,
+    pub to: u32,
+    pub color: Color,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -88,6 +113,8 @@ pub struct VizData {
     pub logs: VecDeque<String>,
     pub focus: Option<ChallengeFocus>,
     pub merkle: Option<MerkleDisplay>,
+    pub triads: TriadCatalog,
+    pub spot_checks: Vec<SpotCheckDisplay>,
 }
 
 #[derive(Clone, Debug, Serialize, Default)]
@@ -96,6 +123,15 @@ pub struct ChallengeFocus {
     pub description: String,
     pub triads: Vec<[u32; 3]>,
     pub edges: Vec<EdgeHighlight>,
+}
+
+#[derive(Clone, Debug, Serialize, Default)]
+pub struct SpotCheckDisplay {
+    pub round_label: String,
+    pub nodes: [u32; 3],
+    pub signature: String,
+    pub rows: [String; 3],
+    pub in_set: bool,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -142,6 +178,7 @@ impl Visualizer {
             instance.coloration.blank_limit(),
             instance.coloration.pattern_count(),
         );
+        let triad_catalog = TriadCatalog::from_coloration(&instance.coloration);
         let constraints = ConstraintSummary::from_configs(verifier, stark);
 
         Ok(Self {
@@ -154,6 +191,8 @@ impl Visualizer {
                 logs: VecDeque::with_capacity(LOG_LIMIT),
                 focus: None,
                 merkle: None,
+                triads: triad_catalog,
+                spot_checks: Vec::new(),
             },
             finished: false,
         })
@@ -188,6 +227,16 @@ impl Visualizer {
         self.render()
     }
 
+    pub fn append_spot_checks(&mut self, checks: Vec<SpotCheckDisplay>) -> io::Result<()> {
+        extend_spot_history(&mut self.data.spot_checks, checks);
+        self.render()
+    }
+
+    pub fn clear_spot_checks(&mut self) -> io::Result<()> {
+        self.data.spot_checks.clear();
+        self.render()
+    }
+
     pub fn finish(&mut self) -> io::Result<()> {
         self.restore_terminal()
     }
@@ -216,12 +265,16 @@ impl Visualizer {
 
         self.terminal.draw(|frame| {
             let size = frame.size();
+            let triad_rows = ((snapshot.triads.patterns.len() + TRIAD_COLUMNS - 1)
+                / TRIAD_COLUMNS) as u16;
+            let triad_height = (triad_rows + 2).clamp(5, 18);
             let vertical = Layout::default()
                 .direction(Direction::Vertical)
                 .constraints([
                     Constraint::Length(9),
+                    Constraint::Length(triad_height),
                     Constraint::Length(14),
-                    Constraint::Min(7),
+                    Constraint::Min(20),
                 ])
                 .split(size);
 
@@ -237,19 +290,22 @@ impl Visualizer {
             let bottom_chunks = Layout::default()
                 .direction(Direction::Vertical)
                 .constraints([
+                    Constraint::Length(5),
                     Constraint::Length(6),
-                    Constraint::Length(7),
-                    Constraint::Min(2),
+                    Constraint::Length(6),
+                    Constraint::Min(3),
                 ])
-                .split(vertical[2]);
+                .split(vertical[3]);
 
             frame.render_widget(Self::graph_block(&snapshot), summary_chunks[0]);
             frame.render_widget(Self::coloration_block(&snapshot), summary_chunks[1]);
             frame.render_widget(Self::constraint_block(&snapshot), summary_chunks[2]);
-            frame.render_widget(Self::graph_canvas(&snapshot), vertical[1]);
+            frame.render_widget(Self::triad_catalog_block(&snapshot), vertical[1]);
+            frame.render_widget(Self::graph_canvas(&snapshot), vertical[2]);
             frame.render_widget(Self::round_block(&snapshot), bottom_chunks[0]);
             frame.render_widget(Self::challenge_block(&snapshot), bottom_chunks[1]);
-            frame.render_widget(Self::log_block(&snapshot), bottom_chunks[2]);
+            frame.render_widget(Self::spot_checks_block(&snapshot), bottom_chunks[2]);
+            frame.render_widget(Self::log_block(&snapshot), bottom_chunks[3]);
         })?;
         Ok(())
     }
@@ -313,6 +369,33 @@ impl Visualizer {
             Line::from(format!("chunk: {} bytes", c.stark_chunk)),
         ];
         Paragraph::new(lines).block(Block::default().title("Constraints").borders(Borders::ALL))
+    }
+
+    fn triad_catalog_block(data: &VizData) -> Paragraph<'_> {
+        let mut lines = Vec::new();
+        lines.push(Line::from(format!("|C'| = {} triads", data.triads.total)));
+        if data.triads.patterns.is_empty() {
+            lines.push(Line::from("  catalog pending..."));
+        } else {
+            let mut row = Vec::new();
+            for pattern in &data.triads.patterns {
+                row.push(format!("#{:02}:{}", pattern.id, pattern.signature));
+                if row.len() == TRIAD_COLUMNS {
+                    lines.push(Line::from(row.join("   ")));
+                    row.clear();
+                }
+            }
+            if !row.is_empty() {
+                lines.push(Line::from(row.join("   ")));
+            }
+        }
+        Paragraph::new(lines)
+            .wrap(Wrap { trim: true })
+            .block(
+                Block::default()
+                    .title("Permissible triads (C')")
+                    .borders(Borders::ALL),
+            )
     }
 
     fn round_block(data: &VizData) -> Paragraph<'_> {
@@ -405,6 +488,39 @@ impl Visualizer {
         Paragraph::new(lines).block(
             Block::default()
                 .title("Challenge detail")
+                .borders(Borders::ALL),
+        )
+    }
+
+    fn spot_checks_block(data: &VizData) -> Paragraph<'_> {
+        let mut lines = Vec::new();
+        if data.spot_checks.is_empty() {
+            lines.push(Line::from("spot checks will appear once a challenge fires"));
+        } else {
+            for entry in &data.spot_checks {
+                let status_symbol = if entry.in_set { "✓" } else { "✗" };
+                let status_color = if entry.in_set {
+                    TuiColor::Green
+                } else {
+                    TuiColor::Red
+                };
+                lines.push(Line::from(vec![
+                    Span::styled(
+                        status_symbol,
+                        Style::default()
+                            .fg(status_color)
+                            .add_modifier(Modifier::BOLD),
+                    ),
+                    Span::raw(format!(
+                        " {} [{} {} {}] {}",
+                        entry.round_label, entry.nodes[0], entry.nodes[1], entry.nodes[2], entry.signature
+                    )),
+                ]));
+            }
+        }
+        Paragraph::new(lines).block(
+            Block::default()
+                .title("Spot checks vs C'")
                 .borders(Borders::ALL),
         )
     }
@@ -521,6 +637,7 @@ impl WebVisualizer {
             instance.coloration.blank_limit(),
             instance.coloration.pattern_count(),
         );
+        let triad_catalog = TriadCatalog::from_coloration(&instance.coloration);
         let constraints = ConstraintSummary::from_configs(verifier, stark);
         let data = VizData {
             graph: graph_summary,
@@ -530,6 +647,8 @@ impl WebVisualizer {
             logs: VecDeque::with_capacity(LOG_LIMIT),
             focus: None,
             merkle: None,
+            triads: triad_catalog,
+            spot_checks: Vec::new(),
         };
 
         let shared = Arc::new(RwLock::new(data));
@@ -579,6 +698,18 @@ impl WebVisualizer {
     pub fn set_merkle(&self, merkle: Option<MerkleDisplay>) -> io::Result<()> {
         self.modify_data(|data| {
             data.merkle = merkle;
+        })
+    }
+
+    pub fn append_spot_checks(&self, checks: Vec<SpotCheckDisplay>) -> io::Result<()> {
+        self.modify_data(|data| {
+            extend_spot_history(&mut data.spot_checks, checks);
+        })
+    }
+
+    pub fn clear_spot_checks(&self) -> io::Result<()> {
+        self.modify_data(|data| {
+            data.spot_checks.clear();
         })
     }
 
@@ -651,6 +782,8 @@ fn spawn_web_server(
         runtime.block_on(async move {
             let app = Router::new()
                 .route("/", get(index_handler))
+                .route("/merkle", get(merkle_handler))
+                .route("/triads", get(triads_handler))
                 .route("/snapshot", get(snapshot_handler))
                 .with_state(app_state);
 
@@ -681,6 +814,14 @@ fn spawn_web_server(
 
 async fn index_handler() -> impl IntoResponse {
     Html(WEB_INDEX_HTML)
+}
+
+async fn merkle_handler() -> impl IntoResponse {
+    Html(WEB_MERKLE_HTML)
+}
+
+async fn triads_handler() -> impl IntoResponse {
+    Html(WEB_TRIADS_HTML)
 }
 
 async fn snapshot_handler(State(state): State<WebAppState>) -> impl IntoResponse {
@@ -728,6 +869,34 @@ impl GraphSummary {
             sample_edges,
             layout: GraphLayout::build(graph),
             color_set_size,
+        }
+    }
+}
+
+impl TriadCatalog {
+    pub fn from_coloration(coloration: &ColorationSet) -> Self {
+        let patterns = coloration
+            .patterns()
+            .into_iter()
+            .enumerate()
+            .map(|(idx, key)| TriadPatternView::from_key(idx + 1, key))
+            .collect();
+        TriadCatalog {
+            total: coloration.pattern_count(),
+            patterns,
+        }
+    }
+}
+
+impl TriadPatternView {
+    fn from_key(id: usize, key: [u8; 9]) -> Self {
+        let (signature, rows) = pattern_rows_from_key(&key);
+        let edges = triad_edges_from_key(&key);
+        TriadPatternView {
+            id,
+            signature,
+            rows,
+            edges,
         }
     }
 }
@@ -831,6 +1000,43 @@ fn short_hash(hex_string: &str, label: &str) -> String {
     }
 }
 
+fn pattern_rows_from_key(key: &[u8; 9]) -> (String, [String; 3]) {
+    let mut rows = [String::new(), String::new(), String::new()];
+    let mut compact = Vec::with_capacity(3);
+    for row in 0..3 {
+        let mut row_pretty = String::new();
+        let mut row_compact = String::new();
+        for col in 0..3 {
+            let idx = row * 3 + col;
+            let color = Color::from_u8(key[idx]).unwrap_or(Color::Blank);
+            let symbol = color_symbol(color);
+            if col > 0 {
+                row_pretty.push(' ');
+            }
+            row_pretty.push(symbol);
+            row_compact.push(symbol);
+        }
+        rows[row] = row_pretty;
+        compact.push(row_compact);
+    }
+    (compact.join("|"), rows)
+}
+
+fn triad_edges_from_key(key: &[u8; 9]) -> Vec<TriadEdgeView> {
+    let mut edges = Vec::with_capacity(9);
+    for row in 0..3 {
+        for col in 0..3 {
+            let color = Color::from_u8(key[row * 3 + col]).unwrap_or(Color::Blank);
+            edges.push(TriadEdgeView {
+                from: row as u32,
+                to: col as u32,
+                color,
+            });
+        }
+    }
+    edges
+}
+
 fn color_symbol(color: Color) -> char {
     match color {
         Color::Red => 'R',
@@ -854,6 +1060,18 @@ fn push_log(logs: &mut VecDeque<String>, entry: String) {
         logs.pop_front();
     }
     logs.push_back(entry);
+}
+
+fn extend_spot_history(storage: &mut Vec<SpotCheckDisplay>, mut entries: Vec<SpotCheckDisplay>) {
+    if entries.is_empty() {
+        return;
+    }
+    for entry in entries.drain(..).rev() {
+        storage.insert(0, entry);
+    }
+    if storage.len() > SPOT_HISTORY_LIMIT {
+        storage.truncate(SPOT_HISTORY_LIMIT);
+    }
 }
 
 pub fn focus_from_spot_response(
@@ -901,6 +1119,28 @@ pub fn focus_from_blank_response(
     }
 }
 
+pub fn spot_checks_from_response(
+    round_label: &str,
+    response: &SpotChallengeResponse,
+    coloration: &ColorationSet,
+) -> Vec<SpotCheckDisplay> {
+    response
+        .responses
+        .iter()
+        .map(|spot_response| {
+            let spot = spot_from_response(spot_response);
+            let (signature, rows) = spot_rows(&spot);
+            SpotCheckDisplay {
+                round_label: round_label.to_string(),
+                nodes: spot_response.nodes,
+                signature,
+                rows,
+                in_set: coloration.contains(&spot),
+            }
+        })
+        .collect()
+}
+
 pub fn merkle_display_from_chunked(label: &str, proof: &ChunkedMerkleProof) -> MerkleDisplay {
     MerkleDisplay {
         label: label.to_string(),
@@ -928,4 +1168,36 @@ fn steps_from_merkle_proof(proof: &crate::crypto::merkle::MerkleProof) -> Vec<Me
         });
     }
     steps
+}
+
+fn spot_from_response(response: &SpotResponse) -> Spot {
+    let mut edges = HashMap::new();
+    for edge in &response.edges {
+        edges.insert((edge.from, edge.to), edge.color);
+    }
+    Spot {
+        nodes: response.nodes,
+        edges,
+    }
+}
+
+fn spot_rows(spot: &Spot) -> (String, [String; 3]) {
+    let mut rows = [String::new(), String::new(), String::new()];
+    let mut compact = Vec::with_capacity(3);
+    for (row_idx, &from) in spot.nodes.iter().enumerate() {
+        let mut row_pretty = String::new();
+        let mut row_compact = String::new();
+        for (col_idx, &to) in spot.nodes.iter().enumerate() {
+            let color = spot.edges.get(&(from, to)).copied().unwrap_or(Color::Blank);
+            let symbol = color_symbol(color);
+            if col_idx > 0 {
+                row_pretty.push(' ');
+            }
+            row_pretty.push(symbol);
+            row_compact.push(symbol);
+        }
+        rows[row_idx] = row_pretty;
+        compact.push(row_compact);
+    }
+    (compact.join("|"), rows)
 }

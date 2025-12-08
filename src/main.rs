@@ -11,7 +11,7 @@ use zkp_c_coloring::utils::serialization::{
 };
 use zkp_c_coloring::{
     focus_from_blank_response, focus_from_spot_response, merkle_display_from_chunked,
-    RoundSnapshot, Visualizer, WebVisualizer,
+    spot_checks_from_response, RoundSnapshot, Visualizer, WebVisualizer,
 };
 
 type CliResult<T> = Result<T, Box<dyn std::error::Error>>;
@@ -108,15 +108,11 @@ fn run() -> CliResult<()> {
 }
 
 fn run_generate(nodes: u32, output: PathBuf) -> CliResult<()> {
-    println!("Generating hard-instance graph (tournament/grid embedding)...");
+    println!("Generating probabilistic digraph with self-loops (p = 0.50)...");
     let (graph, coloration, params) = generate_hard_instance(nodes);
     println!(
-        "  n = {}, tournament k = {}, grid = {}x{}, blank budget = {}",
-        params.nodes,
-        params.tournament_size,
-        params.grid_rows,
-        params.grid_cols,
-        params.blank_budget
+        "  n = {}, p = {:.2}, colored edges = {}, blank edges = {}",
+        params.nodes, params.edge_probability, params.colored_edges, params.blank_edges
     );
     let instance = GraphInstance::with_metadata(graph, coloration, params);
     save_graph_instance(&output, &instance)?;
@@ -211,11 +207,13 @@ fn run_visualize(instance_path: PathBuf, rounds: u32) -> CliResult<()> {
     visualizer.set_commitments(&commitments)?;
     visualizer.set_focus(None)?;
     visualizer.set_merkle(None)?;
+    visualizer.clear_spot_checks()?;
 
     for round in 0..rounds {
         let challenge = verifier.generate_challenge(round);
         match challenge {
             Challenge::Spot(challenge) => {
+                let challenge_label = format!("#{:02}", round + 1);
                 let detail = challenge
                     .spots
                     .iter()
@@ -231,12 +229,14 @@ fn run_visualize(instance_path: PathBuf, rounds: u32) -> CliResult<()> {
                     detail: format!("triads: {detail}"),
                     status: status.to_string(),
                 })?;
-                let focus = focus_from_spot_response(
-                    &format!("#{:02}", round + 1),
-                    &challenge.spots,
-                    &response,
-                );
+                let focus = focus_from_spot_response(&challenge_label, &challenge.spots, &response);
                 visualizer.set_focus(Some(focus))?;
+                let spot_checks = spot_checks_from_response(
+                    &challenge_label,
+                    &response,
+                    &instance.coloration,
+                );
+                visualizer.append_spot_checks(spot_checks)?;
                 let merkle = response
                     .responses
                     .iter()
@@ -331,6 +331,7 @@ fn run_visualize_web(instance_path: PathBuf, rounds: u32, port: u16) -> CliResul
         let challenge = verifier.generate_challenge(round);
         match challenge {
             Challenge::Spot(challenge) => {
+                let challenge_label = format!("#{:02}", round + 1);
                 let detail = challenge
                     .spots
                     .iter()
@@ -346,12 +347,14 @@ fn run_visualize_web(instance_path: PathBuf, rounds: u32, port: u16) -> CliResul
                     detail: format!("triads: {detail}"),
                     status: status.to_string(),
                 })?;
-                let focus = focus_from_spot_response(
-                    &format!("#{:02}", round + 1),
-                    &challenge.spots,
-                    &response,
-                );
+                let focus = focus_from_spot_response(&challenge_label, &challenge.spots, &response);
                 visualizer.set_focus(Some(focus))?;
+                let spot_checks = spot_checks_from_response(
+                    &challenge_label,
+                    &response,
+                    &instance.coloration,
+                );
+                visualizer.append_spot_checks(spot_checks)?;
                 let merkle = response
                     .responses
                     .iter()
