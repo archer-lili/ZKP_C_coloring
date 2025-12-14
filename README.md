@@ -66,6 +66,23 @@ cargo run -- benchmark --nodes 64 --rounds 12 --samples 5
 ```
 Generates fresh graphs per sample and reports average prove/verify timings.
 
+### Comprehensive benchmark suite
+For detailed performance analysis across multiple configurations:
+```bash
+cargo run --release --bin benchmark
+```
+Or use the PowerShell script:
+```powershell
+.\run-benchmark.ps1
+```
+This measures prove/verify time, memory usage, proof sizes, and computational complexity across various node counts (8-128), round counts (5-20), and blank checking strategies (sampling vs full check). See `BENCHMARKING.md` for details.
+
+Need to focus on a single massive graph? Pass the node counts directly:
+```bash
+cargo run --release --bin benchmark --nodes 1000 --rounds 10 --strategies sampling,full
+```
+The `--nodes`, `--rounds`, and `--strategies` flags accept comma-separated lists, so you can mix smaller graphs with the 1000-node sweep in a single invocation.
+
 ## Live visualization UI
 
 Track every commitment, challenge, and response in a dedicated terminal dashboard powered by `ratatui`:

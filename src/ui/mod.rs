@@ -132,6 +132,7 @@ pub struct SpotCheckDisplay {
     pub signature: String,
     pub rows: [String; 3],
     pub in_set: bool,
+    pub edges: Vec<EdgeHighlight>,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -265,8 +266,8 @@ impl Visualizer {
 
         self.terminal.draw(|frame| {
             let size = frame.size();
-            let triad_rows = ((snapshot.triads.patterns.len() + TRIAD_COLUMNS - 1)
-                / TRIAD_COLUMNS) as u16;
+            let triad_rows =
+                ((snapshot.triads.patterns.len() + TRIAD_COLUMNS - 1) / TRIAD_COLUMNS) as u16;
             let triad_height = (triad_rows + 2).clamp(5, 18);
             let vertical = Layout::default()
                 .direction(Direction::Vertical)
@@ -389,13 +390,11 @@ impl Visualizer {
                 lines.push(Line::from(row.join("   ")));
             }
         }
-        Paragraph::new(lines)
-            .wrap(Wrap { trim: true })
-            .block(
-                Block::default()
-                    .title("Permissible triads (C')")
-                    .borders(Borders::ALL),
-            )
+        Paragraph::new(lines).wrap(Wrap { trim: true }).block(
+            Block::default()
+                .title("Permissible triads (C')")
+                .borders(Borders::ALL),
+        )
     }
 
     fn round_block(data: &VizData) -> Paragraph<'_> {
@@ -513,7 +512,11 @@ impl Visualizer {
                     ),
                     Span::raw(format!(
                         " {} [{} {} {}] {}",
-                        entry.round_label, entry.nodes[0], entry.nodes[1], entry.nodes[2], entry.signature
+                        entry.round_label,
+                        entry.nodes[0],
+                        entry.nodes[1],
+                        entry.nodes[2],
+                        entry.signature
                     )),
                 ]));
             }
@@ -905,6 +908,7 @@ impl TriadPatternView {
 pub struct GraphLayout {
     pub nodes: Vec<NodePoint>,
     pub edges: Vec<EdgeSegment>,
+    pub loops: Vec<SelfLoopSegment>,
     pub visualized: u32,
 }
 
@@ -926,6 +930,12 @@ pub struct EdgeSegment {
     pub color: Color,
 }
 
+#[derive(Clone, Debug, Serialize)]
+pub struct SelfLoopSegment {
+    pub node: u32,
+    pub color: Color,
+}
+
 impl GraphLayout {
     const MAX_NODES: u32 = u32::MAX;
     const MAX_EDGES: usize = 96;
@@ -941,13 +951,15 @@ impl GraphLayout {
         }
 
         let mut edges = Vec::new();
+        let mut loops = Vec::new();
         'outer: for from in 0..visualized {
             for to in 0..visualized {
-                if from == to {
-                    continue;
-                }
                 let color = graph.get_edge(from, to);
                 if color == Color::Blank {
+                    continue;
+                }
+                if from == to {
+                    loops.push(SelfLoopSegment { node: from, color });
                     continue;
                 }
                 let src = &nodes[from as usize];
@@ -970,6 +982,7 @@ impl GraphLayout {
         GraphLayout {
             nodes,
             edges,
+            loops,
             visualized,
         }
     }
@@ -1130,12 +1143,19 @@ pub fn spot_checks_from_response(
         .map(|spot_response| {
             let spot = spot_from_response(spot_response);
             let (signature, rows) = spot_rows(&spot);
+            let mut edges: Vec<EdgeHighlight> = spot
+                .edges
+                .iter()
+                .map(|(&(from, to), &color)| EdgeHighlight { from, to, color })
+                .collect();
+            edges.sort_by_key(|edge| (edge.from, edge.to));
             SpotCheckDisplay {
                 round_label: round_label.to_string(),
                 nodes: spot_response.nodes,
                 signature,
                 rows,
                 in_set: coloration.contains(&spot),
+                edges,
             }
         })
         .collect()
